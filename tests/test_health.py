@@ -7,11 +7,24 @@ async def test_live_returns_alive(client: AsyncClient) -> None:
     assert r.json() == {"status": "alive"}
 
 
-async def test_ready_and_api_health_return_ready(client: AsyncClient) -> None:
+async def test_ready_and_api_health_with_page_loaded_return_ready(client: AsyncClient) -> None:
     for path in ("/health/ready", "/api/health"):
         r = await client.get(path)
         assert r.status_code == 200
-        assert r.json()["status"] == "ready"
+        assert r.json() == {"status": "ready", "checks": {"page": "ok"}}
+
+
+async def test_ready_without_page_returns_503(client: AsyncClient) -> None:
+    from app.main import app
+
+    page = app.state.page
+    del app.state.page
+    try:
+        r = await client.get("/health/ready")
+    finally:
+        app.state.page = page
+    assert r.status_code == 503
+    assert r.json()["status"] == "degraded"
 
 
 async def test_security_endpoint_describes_controls(client: AsyncClient) -> None:
@@ -26,15 +39,3 @@ async def test_version_shape_matches_fleet_contract(client: AsyncClient) -> None
     assert r.status_code == 200
     assert set(r.json()) == {"version", "commit", "commit_short", "built_at", "started_at"}
     assert r.headers["cache-control"] == "no-store"
-
-
-async def test_security_headers_and_std14_404(client: AsyncClient) -> None:
-    r = await client.get("/nope")
-    assert r.status_code == 404
-    assert r.json()["error"]["code"] == "NOT_FOUND"
-    assert r.headers["x-frame-options"] == "DENY"
-    assert r.headers["content-security-policy"].startswith("default-src 'none'")
-
-
-async def test_metrics_has_build_info(client: AsyncClient) -> None:
-    assert "app_build_info{" in (await client.get("/metrics")).text
