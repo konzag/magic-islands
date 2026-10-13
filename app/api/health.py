@@ -1,4 +1,7 @@
-"""Unversioned infrastructure endpoints (STD-13): /health/live, /health/ready, /health/security, /version."""
+"""Unversioned infrastructure endpoints (STD-13): /health/live, /health/ready, /health/security, /version.
+
+Only /health/live is reachable through the Funnel (app/core/guards.py).
+"""
 
 from typing import Any
 
@@ -18,8 +21,11 @@ async def health_live() -> dict[str, str]:
 
 @router.get("/health/ready")
 async def health_ready(request: Request) -> JSONResponse:
-    """Ready: the skeleton has no dependencies (no DB)."""
-    return JSONResponse({"status": "ready", "checks": {}})
+    """Ready = the game page is loaded and its CSP hashes are computed (there is no database)."""
+    page = getattr(request.app.state, "page", None)
+    if page is None:
+        return JSONResponse({"status": "degraded", "checks": {"page": "not loaded"}}, status_code=503)
+    return JSONResponse({"status": "ready", "checks": {"page": "ok"}})
 
 
 @router.get("/api/health")
@@ -34,9 +40,11 @@ async def health_security(request: Request) -> dict[str, Any]:
     s = request.app.state.settings
     return {
         "headers": SECURITY_HEADER_NAMES,
-        "csp": "default-src none",
+        "csp": "page: inline script/style by sha256 hash, self only, no network; other responses: default-src none",
         "docs_exposed": s.docs_enabled,
         "auth": "none by design (public kids' game, no data; ADR-0001)",
+        "funnel": "only / , /static/*, /favicon.ico, /health/live (GET/HEAD); everything else 404",
+        "metrics": "direct peers in METRICS_ALLOW_IPS only, never proxied",
         "service": s.service_name,
     }
 
