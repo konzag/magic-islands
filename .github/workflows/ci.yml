@@ -34,7 +34,7 @@ jobs:
       - name: Types (mypy, strict)
         run: mypy
       - name: Game script syntax (node --check on the inline <script>)
-        run: python tools/extract_inline_js.py "$RUNNER_TEMP/game.js" && node --check "$RUNNER_TEMP/game.js"
+        run: python tools/extract_inline_js.py "$RUNNER_TEMP/game.js" && node --check "$RUNNER_TEMP/game.js" && node --check app/services/sw.js
       - name: Tests + coverage gate (pytest.ini, 90%)
         run: pytest
       - name: Dependency audit (pip-audit)

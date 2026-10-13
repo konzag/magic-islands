@@ -13,7 +13,15 @@ from tests.conftest import FUNNEL, PROMETHEUS
 
 ClientFrom = Callable[[str], AbstractAsyncContextManager[AsyncClient]]
 
-PUBLIC = ["/", "/static/fonts/comfortaa.css", "/favicon.ico", "/health/live"]
+PUBLIC = [
+    "/",
+    "/sw.js",
+    "/static/fonts/comfortaa.css",
+    "/static/manifest.webmanifest",
+    "/static/icons/icon-192.png",
+    "/favicon.ico",
+    "/health/live",
+]
 PRIVATE = ["/metrics", "/version", "/health/ready", "/health/security", "/api/health", "/docs", "/openapi.json"]
 
 
@@ -74,11 +82,14 @@ def test_public_path_rules() -> None:
     assert is_public_path("/static/fonts/x.woff2")
     assert not is_public_path("/static/../app/main.py")
     assert not is_public_path("/staticx")
+    assert is_public_path("/sw.js")
+    assert not is_public_path("/sw.js.map")
 
 
 def test_cache_control_rules() -> None:
     assert cache_control_for("/") == "no-cache"
     assert cache_control_for("/static/a.css") == "no-cache"
+    assert cache_control_for("/sw.js") == "no-cache"
     assert cache_control_for("/health/live") == "no-store"
     assert cache_control_for("/metrics") == "no-store"
 

@@ -34,7 +34,7 @@ SECURITY_HEADER_NAMES = [*SECURITY_HEADERS, "Content-Security-Policy"]
 
 def cache_control_for(path: str) -> str:
     """Fleet baseline: API/health/version/metrics no-store; the page and its assets revalidate (ETag)."""
-    if path == "/" or path.startswith("/static/") or path == "/favicon.ico":
+    if path in ("/", "/sw.js", "/favicon.ico") or path.startswith("/static/"):
         return "no-cache"
     return "no-store"
 

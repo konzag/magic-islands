@@ -19,7 +19,7 @@ no network calls (CSP `connect-src 'none'`).
    It is public, with no Authelia. Staging is NOT on the Funnel; it is reachable only through Caddy + Authelia
    (`magic.staging.homelab.lan`).
 2. **Funnel allowlist in the app** (`app/core/guards.py`): a request marked `Tailscale-Funnel-Request` may only
-   use GET/HEAD on `/`, `/static/*`, `/favicon.ico` and `/health/live`. Everything else answers 404, so
+   use GET/HEAD on `/`, `/sw.js`, `/static/*`, `/favicon.ico` and `/health/live`. Everything else answers 404, so
    `/version`, `/health/ready`, `/health/security`, `/metrics` and `/docs` never reach the internet.
 3. **/metrics** is served only to a direct, non-proxied peer in `METRICS_ALLOW_IPS` (default `192.168.1.11`,
    the Prometheus host). A request carrying `X-Forwarded-For`, `Forwarded` or the Funnel header is refused,
@@ -35,6 +35,15 @@ no network calls (CSP `connect-src 'none'`).
    status, duration and a funnel flag, without the client address (data minimisation).
 7. **No rate limiting:** the responses are static and served from memory (an ETag answers revalidation
    with 304). Tailscale Funnel has its own limits.
+
+## Amendment 2026-10-14: offline play (owner-approved proposal)
+
+- `/sw.js` (the service worker) joins the Funnel allowlist. It must be served from the root so that its
+  scope covers `/`. The manifest and icons live under `/static/`, which was already public.
+- The page CSP adds `worker-src 'self'` and `manifest-src 'self'`; `connect-src` stays `'none'`. The
+  worker registration lives inside the hashed inline script, so `script-src` still has no `'self'` and
+  the page still has no `<script src>`. The worker gets its own CSP: `default-src 'none'; connect-src 'self'`.
+- The worker only reads same-origin GETs into the Cache Storage of the device; it sends nothing anywhere.
 
 ## Standards marked N/A (app-standard.md)
 

@@ -2,8 +2,8 @@
 
 Funnel (prod): tailscaled proxies https://<apps>.ts.net:8443 to 127.0.0.1:8087 and marks every request with the
 `Tailscale-Funnel-Request` header. Through the Funnel only the game itself is reachable (GET/HEAD of `/`,
-`/static/...`, `/favicon.ico`, `/health/live`); everything else answers 404, so /version, /health/ready,
-/health/security and /metrics never leak to the internet.
+`/sw.js` (offline play), `/static/...`, `/favicon.ico`, `/health/live`); everything else answers 404, so
+/version, /health/ready, /health/security and /metrics never leak to the internet.
 
 /metrics: only for a direct socket peer in METRICS_ALLOW_IPS (the Prometheus host) that is not proxied (no
 Funnel header, no X-Forwarded-For / Forwarded). uvicorn runs with --forwarded-allow-ips=127.0.0.1, so a forged
@@ -22,7 +22,7 @@ from app.core.errors import error_body
 
 FUNNEL_HEADER = "tailscale-funnel-request"
 _PROXY_HEADERS = (FUNNEL_HEADER, "x-forwarded-for", "forwarded")
-PUBLIC_EXACT = frozenset({"/", "/favicon.ico", "/health/live"})
+PUBLIC_EXACT = frozenset({"/", "/sw.js", "/favicon.ico", "/health/live"})
 PUBLIC_PREFIX = "/static/"
 
 
