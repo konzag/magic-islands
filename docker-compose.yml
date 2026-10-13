@@ -1,0 +1,10 @@
+# NOTE: Not used in production until Phase 5
+# Local development only. No database (STD-20 N/A, see docs/ADR/0001-public-game-via-funnel.md).
+services:
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:8087:8087"
+    environment:
+      ENVIRONMENT: dev
+      LOG_LEVEL: INFO

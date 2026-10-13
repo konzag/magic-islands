@@ -1,0 +1,37 @@
+name: Auto-merge
+
+# Option B (GitHub Free, no branch protection): after CI succeeds, merge green PRs into `staging` through
+# the API and keep a "staging -> main" release PR open for the owner's one-click GO.
+# Logic + rules: .github/scripts/automerge.sh. workflow_run always uses the copy on the default branch (main).
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: write        # merge PRs
+  pull-requests: write   # create the release PR
+  actions: write         # dispatch CI on staging after a merge
+  checks: read
+  statuses: read
+
+concurrency:
+  group: automerge
+  cancel-in-progress: false
+
+jobs:
+  automerge:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github/scripts
+      - name: Merge green PRs / open release PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: bash .github/scripts/automerge.sh

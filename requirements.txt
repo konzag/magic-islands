@@ -1,0 +1,14 @@
+# Runtime dependencies: exact pins (supply chain). Bump via Dependabot PRs.
+fastapi==0.143.0
+starlette==1.7.0
+uvicorn[standard]==0.54.0
+pydantic==2.14.0
+pydantic-settings==2.15.0
+structlog==26.1.0
+prometheus-fastapi-instrumentator==8.1.0
+anyio==4.15.1  # >=4.14.2 GHSA-82r6-8w77-94w6 (critical)
+
+# OpenTelemetry tracing (app/core/observability.py; off unless OTEL_ENABLED=true)
+opentelemetry-sdk==1.45.1
+opentelemetry-exporter-otlp-proto-grpc==1.45.1
+opentelemetry-instrumentation-fastapi==0.66b1

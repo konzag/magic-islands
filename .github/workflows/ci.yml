@@ -1,0 +1,41 @@
+name: CI
+
+# Every push (feature branches, staging, main) runs lint, types, tests with coverage gate and a fast
+# security scan. Minutes are kept low: one event (push only, no duplicate pull_request run: a PR shows the
+# push run of its head commit), superseded runs cancelled, pip cache. No paths filter on purpose: every
+# commit must carry a CI status, because infra deploys a commit only if its `test` check is green.
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"   # template-app standard
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - name: Install
+        run: pip install -r requirements-dev.txt
+      - name: Lint (ruff)
+        run: ruff check . && ruff format --check .
+      - name: Types (mypy, strict)
+        run: mypy
+      - name: Tests + coverage gate (pytest.ini, 90%)
+        run: pytest
+      - name: Dependency audit (pip-audit)
+        run: pip-audit -r requirements.txt -r requirements-dev.txt --progress-spinner off
+      - name: SAST (bandit)
+        run: bandit -c .bandit -r . -x ./tests,./.venv

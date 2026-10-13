@@ -1,0 +1,47 @@
+# Dependabot configuration — konzag standard (grouped)
+# Minor/patch updates are grouped into single PRs per ecosystem.
+# Major updates stay as individual PRs for manual review.
+# Option B: PRs target `staging` (Auto-merge merges green non-major ones; main only via the release PR).
+# cooldown: wait 7 days after a release before proposing it (supply-chain hygiene, semgrep rule).
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    target-branch: "staging"
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "deps"
+    groups:
+      python-deps:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "staging"
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "ci"
+    commit-message:
+      prefix: "ci"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"

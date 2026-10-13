@@ -1,0 +1,32 @@
+[project]
+name = "magic-islands"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "Τα Μαγικά Νησιά: the kids' HTML5 game as a homelab app (stateless FastAPI, strict CSP)"
+license = {text = "MIT"}
+
+# pytest.ini is authoritative for pytest; .coveragerc for coverage.
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = [".venv", "venv", "_incoming"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "BLE", "RUF"]
+ignore = [
+    "B008",                        # FastAPI Depends()/Query() in defaults is idiomatic
+    "RUF001", "RUF002", "RUF003",  # Greek UI text: Greek letters are "confusable" with Latin. Intended.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "S108", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+files = ["app"]
