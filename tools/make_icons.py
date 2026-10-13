@@ -131,7 +131,7 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     for size in PNG_SIZES:
         (OUT / f"icon-{size}.png").write_bytes(render(size))
-    (OUT / "icon.svg").write_text(svg(), encoding="utf-8")
+    (OUT / "icon.svg").write_text(svg(), encoding="utf-8", newline="\n")
     sys.stdout.write(f"icons -> {OUT}\n")
     return 0
 
