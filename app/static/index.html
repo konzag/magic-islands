@@ -133,6 +133,10 @@ body.touch .spell .ic{font-size:28px;}
   .card{padding:22px;}
 }
 @media (prefers-reduced-motion:reduce){#banner{animation:none;}}
+/* homelab: «Συνέχεια» (saved progress) next to the start button */
+.btn-row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;}
+.big-btn.alt{background:var(--winter);box-shadow:0 6px 0 var(--winter-deep);}
+.big-btn.alt:active{box-shadow:0 2px 0 var(--winter-deep);}
 /* homelab: the hidden attribute must win over .screen{display:grid} (overlays blocked clicks) */
 [hidden]{display:none!important;}
 </style>
@@ -192,7 +196,10 @@ body.touch .spell .ic{font-size:28px;}
         <kbd>Space</kbd><span>η Ίριδα βοηθάει (μία φορά σε κάθε νησί)</span>
         <kbd>Q</kbd><span>αλλαγή ήρωα</span>
       </div>
-      <button class="big-btn" id="start-btn">Ξεκινάμε! ✨</button>
+      <div class="btn-row">
+        <button class="big-btn alt" id="continue-btn" hidden>Συνέχεια ▶</button>
+        <button class="big-btn" id="start-btn">Ξεκινάμε! ✨</button>
+      </div>
     </div>
   </section>
 
@@ -785,6 +792,7 @@ function collectKey(){
   G.key=null;G.keys++;sfx('key');
   for(const h of G.heroes){h.down=false;h.hp=h.max;burst(h.x,h.y-40,'#9dffb0',20,-60);}
   updateKeys();G.phase='done';G.banners=[];$('banner').hidden=true;
+  if(G.island<3)saveProgress(G.island+1);else clearSave();
   const lines=[{w:'iris',t:'Μπράβο! Βρήκατε το κλειδί!'},{w:'iris',t:'Ξεκλειδώσατε τη δύναμη '+I.power+'! Η ζωή σας γέμισε! 💚'}];
   if(G.island===3){lines.push({w:'iris',t:'Τα καταφέρατε! Η μαγεία γύρισε σε όλα τα νησιά!'});}
   else lines.push({w:'iris',t:'Ο Ζαφείρης μάς περιμένει. Πάμε στο επόμενο νησί!'});
@@ -806,12 +814,21 @@ function lose(){
   G.phase='lost';G.loseT=1.4;musicOn=false;sfx('lose');
 }
 function restart(){G.keys=0;initAudio();startIsland(0);}
+/* homelab: saved progress, on this device only (localStorage; nothing is sent anywhere). It keeps the
+   furthest island reached (its keys = the islands before it), so losing never takes progress away. */
+const SAVE_KEY='magic-islands.progress.v1';
+function loadSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(s&&Number.isInteger(s.island)&&s.island>0&&s.island<ISL.length)return s;}catch(e){}return null;}
+function saveProgress(i){const s=loadSave();if(s&&s.island>=i)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,island:i,keys:i}));}catch(e){}}
+function clearSave(){try{localStorage.removeItem(SAVE_KEY);}catch(e){}}
+function continueGame(){const s=loadSave();if(!s){startGame();return;}initAudio();G.keys=s.island;startIsland(s.island);}
+function updateContinue(){const s=loadSave(),b=$('continue-btn');b.hidden=!s;if(s)b.textContent='Συνέχεια: '+ISL[s.island].name+' ▶';}
 
 /* ---------------- STATES / UI ---------------- */
 const hudEl=$('hud'),dlgEl=$('dialog');
 function setState(s){
   G.state=s;
   $('title').hidden=s!=='title';
+  if(s==='title')updateContinue();
   $('lose').hidden=s!=='lose';
   $('win').hidden=s!=='win';
   $('paused').hidden=s!=='paused';
@@ -884,6 +901,7 @@ const keys=new Set();const touchV={x:0,y:0};
 const KMAP={Digit1:0,Digit2:1,Digit3:2,Digit4:3,Numpad1:0,Numpad2:1,Numpad3:2,Numpad4:3};
 addEventListener('keydown',e=>{
   const c=e.code;
+  if(G.state==='title'&&e.target&&e.target.tagName==='BUTTON'&&(c==='Enter'||c==='Space'||c==='NumpadEnter'))return; // homelab: native click
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','Tab'].includes(c))e.preventDefault();
   if(e.repeat&&!c.startsWith('Arrow'))return;
   keys.add(c);onKey(c);
@@ -893,7 +911,7 @@ addEventListener('blur',()=>{keys.clear();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&G.state==='play')pauseGame();});
 function onKey(c){
   const adv=c==='Enter'||c==='Space'||c==='NumpadEnter';
-  if(G.state==='title'){if(adv)startGame();}
+  if(G.state==='title'){if(adv){if(loadSave())continueGame();else startGame();}}
   else if(G.state==='dialog'){if(adv)advanceDialog();}
   else if(G.state==='play'){
     if(c in KMAP)castActive(KMAP[c]);
@@ -941,6 +959,7 @@ $('swap-btn').addEventListener('pointerdown',e=>{e.preventDefault();if(G.state==
 cards.forEach((c,i)=>c.addEventListener('pointerdown',e=>{e.preventDefault();if(G.state==='play'&&i!==G.active)switchHero();}));
 dlgEl.addEventListener('pointerdown',e=>{e.preventDefault();advanceDialog();});
 $('start-btn').addEventListener('click',startGame);
+$('continue-btn').addEventListener('click',continueGame);
 $('retry-btn').addEventListener('click',restart);
 $('again-btn').addEventListener('click',toTitle);
 $('resume-btn').addEventListener('click',resumeGame);

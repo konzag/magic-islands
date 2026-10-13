@@ -88,3 +88,24 @@ def test_hidden_attribute_beats_screen_display() -> None:
     """Game fix: `.screen{display:grid}` overrode [hidden], so every overlay covered the start button."""
     style = INLINE_BLOCKS["style"].findall(INDEX.read_text(encoding="utf-8"))[0]
     assert "[hidden]{display:none!important;}" in style
+
+
+def _script() -> str:
+    return INLINE_BLOCKS["script"].findall(INDEX.read_text(encoding="utf-8"))[0]
+
+
+def test_title_offers_continue_from_saved_progress() -> None:
+    """Saved progress lives on the device only (localStorage); the title screen offers «Συνέχεια»."""
+    text = INDEX.read_text(encoding="utf-8")
+    assert '<button class="big-btn alt" id="continue-btn" hidden>' in text
+    js = _script()
+    assert "magic-islands.progress.v1" in js
+    assert "$('continue-btn').addEventListener('click',continueGame)" in js
+
+
+def test_every_local_storage_access_is_guarded() -> None:
+    """Private mode / blocked storage throws: every access sits directly inside a try block."""
+    js = _script()
+    uses = js.count("localStorage.")
+    assert uses >= 3
+    assert js.count("try{localStorage.") + js.count("try{const s=JSON.parse(localStorage.") == uses
