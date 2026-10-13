@@ -1,0 +1,19 @@
+{
+  "name": "Τα Μαγικά Νησιά",
+  "short_name": "Μαγικά Νησιά",
+  "description": "Ένα παιχνίδι με δύο πνεύματα, έναν δράκο και τέσσερα μαγικά νησιά.",
+  "lang": "el",
+  "dir": "ltr",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "background_color": "#140e2e",
+  "theme_color": "#140e2e",
+  "icons": [
+    {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+    {"src": "/static/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+  ]
+}

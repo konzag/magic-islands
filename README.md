@@ -13,14 +13,16 @@ secrets and no outbound calls.
 ```
 app/
   main.py               wiring only (STD-03)
-  api/game.py           GET/HEAD /  (the page, ETag) and /favicon.ico
+  api/game.py           GET/HEAD /  (the page, ETag), /sw.js (service worker) and /favicon.ico
   api/health.py         /health/live, /health/ready, /api/health, /health/security, /version
   core/guards.py        Funnel allowlist + /metrics peer rule (ADR-0001)
   core/middleware.py    security headers, Cache-Control, request log (no client IPs)
   core/observability.py /metrics + app_build_info, optional OpenTelemetry
   services/page.py      loads static/index.html, computes the CSP hashes
+  services/pwa.py       builds /sw.js from services/sw.js (cache version = commit + page hash)
   static/index.html     the game (one inline <script>, one inline <style>)
   static/fonts/         Comfortaa 500/700, Greek + Latin, self-hosted (OFL 1.1)
+  static/manifest.webmanifest, static/icons/   installable app (icons from tools/make_icons.py)
 tools/
   extract_inline_js.py  inline script -> .js for `node --check` (CI)
   smoke.sh              post-deploy smoke
@@ -31,7 +33,7 @@ docs/                   ADR-0001 (exposure + N/A standards), deploy.md, runbook.
 
 | Path | Who can reach it |
 |---|---|
-| `/`, `/static/*`, `/favicon.ico`, `/health/live` | everyone, including the Funnel |
+| `/`, `/sw.js`, `/static/*`, `/favicon.ico`, `/health/live` | everyone, including the Funnel |
 | `/health/ready`, `/api/health`, `/health/security`, `/version` | LAN / Caddy / localhost, never the Funnel |
 | `/metrics` | direct requests from `METRICS_ALLOW_IPS` (Prometheus, 192.168.1.11) only |
 

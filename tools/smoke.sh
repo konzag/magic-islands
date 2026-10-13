@@ -17,6 +17,9 @@ check() { # name expected_code url [grep_pattern] [header]
 check "page" 200 "$BASE/" "Τα Μαγικά Νησιά"
 check "page CSP is hash-based" 200 "$BASE/" "script-src 'sha256-"
 check "font css" 200 "$BASE/static/fonts/comfortaa.css" "@font-face"
+check "service worker" 200 "$BASE/sw.js" "magic-islands-"
+check "manifest" 200 "$BASE/static/manifest.webmanifest" "Τα Μαγικά Νησιά"
+check "funnel header -> /sw.js 200" 200 "$BASE/sw.js" "magic-islands-" "Tailscale-Funnel-Request: ?1"
 check "live" 200 "$BASE/health/live" '"alive"'
 check "ready" 200 "$BASE/health/ready" '"ready"'
 check "version" 200 "$BASE/version" '"commit_short"'

@@ -25,7 +25,7 @@ There is no database, no user data, no secrets and no outbound calls.
 
 ## Checks (same as .github/workflows/ci.yml)
 `ruff check . && ruff format --check .` · `mypy` (strict, app + tools) · `pytest` (gate 90 %, warnings = errors) ·
-`python tools/extract_inline_js.py /tmp/game.js && node --check /tmp/game.js` ·
+`python tools/extract_inline_js.py /tmp/game.js && node --check /tmp/game.js && node --check app/services/sw.js` ·
 `pip-audit -r requirements.txt -r requirements-dev.txt` · `bandit -c .bandit -r . -x ./tests,./.venv`
 
 ## Agent behavior

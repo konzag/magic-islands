@@ -1,5 +1,6 @@
 """Application wiring only (STD-03): routers, middleware, lifespan."""
 
+import mimetypes
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -13,6 +14,7 @@ from app.core.logging import configure_logging
 from app.core.middleware import setup_middleware
 from app.core.observability import setup_metrics, setup_tracing
 from app.services.page import STATIC, load_page
+from app.services.pwa import build_service_worker
 from app.version import load_build_info
 
 
@@ -38,12 +40,14 @@ def create_app(cfg: Settings) -> FastAPI:
     app.state.settings = cfg
     app.state.build_info = load_build_info()
     app.state.page = page
+    app.state.service_worker = build_service_worker(app.state.build_info.short, page.etag)
     register_error_handlers(app)
     setup_middleware(app, cfg)
     setup_metrics(app, app.state.build_info)
     setup_tracing(app, cfg)
     app.include_router(health.router)
     app.include_router(game.router)
+    mimetypes.add_type("application/manifest+json", ".webmanifest")  # not in every OS mime table
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
     return app
 
