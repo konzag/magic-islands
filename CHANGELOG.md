@@ -12,3 +12,6 @@
   `tools/make_icons.py`) and a service worker at `/sw.js` that precaches the page, fonts, CSS and icons.
   The cache version is the build commit + page hash, so every deploy refreshes it. Page CSP gains
   `worker-src 'self'` and `manifest-src 'self'`; `/sw.js` is added to the Funnel allowlist.
+- Saved progress on the device (2026-10-14): the furthest island reached is kept in localStorage
+  (`magic-islands.progress.v1`, every access in try/catch, nothing sent to the server). The title screen
+  offers «Συνέχεια: <νησί>»; Enter on the title continues when a save exists. Cleared after the final win.
