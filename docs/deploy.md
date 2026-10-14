@@ -10,7 +10,7 @@ These are the one-time steps for infra. The request with the same content is
 |---|---|
 | repo | `konzag/magic-islands` (prod follows `main`, staging follows `staging`) |
 | prod host | public VM 106 `public`, 192.168.1.17 (homelab-scripts ADR-0042): no route into the homelab, files pushed by `tools/push-public.sh` (no homelab-scripts clone) |
-| prod URL | `https://public.tailc01d70.ts.net/` (Funnel, port **443**) → `http://127.0.0.1:8087` |
+| prod URL | `https://public.tailc01d70.ts.net:8443/` (Funnel, port **8443**) → `http://127.0.0.1:8087`; 443 on the same node is games-hub (port 8090), which links here |
 | staging | VM staging (192.168.1.16), `magic.staging.homelab.lan` via Caddy + Authelia (not on the Funnel) |
 | provision-apps id / unit / dir | `magic` / `magic-islands` / `/opt/magic-islands/{repo,venv,.env}` |
 | port | **8087** (VM 106 + staging) |
@@ -36,10 +36,10 @@ carries XFF as proxied and never serves `/metrics` to it.
 ## Smoke
 
 `tools/smoke.sh <base-url> [funnel-url]` checks the page, CSP, fonts and health, and that `/metrics` and
-`/version` are 404 through the Funnel. Prod: `tools/smoke.sh http://192.168.1.17:8087 https://public.tailc01d70.ts.net`.
+`/version` are 404 through the Funnel. Prod: `tools/smoke.sh http://192.168.1.17:8087 https://public.tailc01d70.ts.net:8443`.
 
 ## Funnel go-live order (infra, 2026-10-14)
 
 Owner GO → merge release #2 to `main` (auto-deploy on VM 106) → Tailscale ACL (`tag:public`, Funnel attribute
 only for it, no grants from it) → owner approves the node login →
-`tailscale funnel --bg --https=443 http://127.0.0.1:8087` → blackbox probe + alert on the public URL.
+`tailscale funnel --bg --https=8443 http://127.0.0.1:8087` → blackbox probe + alert on the public URL.
