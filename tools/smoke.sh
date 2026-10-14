@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Post-deploy smoke (GET only). Usage: tools/smoke.sh <direct-base-url> [funnel-base-url]
-#   direct: http://127.0.0.1:8087 on the VM (or http://192.168.1.14:8087 from monitor)
-#   funnel: https://<apps>.ts.net:8443 (prod only)
+#   direct: http://127.0.0.1:8087 on the VM (or http://192.168.1.17:8087 from monitor)
+#   funnel: https://public.tailc01d70.ts.net (prod only)
 set -uo pipefail
 BASE=${1:?usage: smoke.sh <base-url> [funnel-url]}
 FUNNEL=${2:-}
