@@ -59,7 +59,7 @@ ruff check . && ruff format --check . && mypy
 ## Delivery (Option B, same as the other apps)
 
 feature branch → PR to `staging` → **CI** (`test` job) → **Auto-merge** merges green PRs → VM staging deploys
-`staging` → release PR `staging → main` → **merged only after the owner's GO** → VM apps deploys `main`.
+`staging` → release PR `staging → main` → **merged only after the owner's GO** → the public VM 106 deploys `main`.
 Infra deploys a commit only when its `test` check is green. Registration steps: `docs/deploy.md`.
 
 ## Origin
