@@ -4,6 +4,20 @@
 homelab app. The UI is in Greek. You play with the keyboard (arrows, 1-4, Space, Q, P/Esc) or by touch
 (virtual d-pad + spell buttons).
 
+## Moving into games-hub (GAME-STANDARD, 2026-10-14)
+
+The game is becoming a static game repo like the other family games. It will be served by `konzag/games-hub`
+at `/magic-islands/` as a pinned submodule, and the FastAPI app below will be retired.
+
+- **`index.html` (repo root) is the game from now on.** It is the version for the hub: no service worker or
+  manifest, relative icons (`assets/`), the hub's font (`/static/fonts/comfortaa.css`), plus 🏠 (back to
+  `/`), ⛶ / F (fullscreen), M (sound) and pause on focus loss. The game logic is unchanged.
+- `tests/smoke.spec.ts` (Playwright, CI job `game-smoke`) serves it with the hub's CSP. It plays 10 s with the
+  keyboard and 10 s with touch, and requires 0 console errors and 0 CSP violations.
+- `app/static/index.html` is a **frozen copy** for the running app on :8443 (with its PWA). It is removed
+  together with the app in a later PR, after the hub serves the game in production and port 8087 is closed.
+  Until then, change the game in `index.html` only.
+
 The app is a small stateless FastAPI service. It serves the game page from memory with a strict, hash-based
 Content-Security-Policy, plus the fleet's standard infra endpoints. It has no database, no user data, no
 secrets and no outbound calls.
@@ -39,7 +53,7 @@ docs/                   ADR-0001 (exposure + N/A standards), deploy.md, runbook.
 
 ## Updating the game
 
-Replace `app/static/index.html` and keep it self-contained: no `<script src>`, no inline `on…=` handlers, no
+Edit `index.html` (repo root; see above) and keep it self-contained: no `<script src>`, no inline `on…=` handlers, no
 third-party URLs. The CSP hashes follow automatically at startup. CI runs `node --check` on the inline
 script, and the tests make sure every inline block is covered by the policy.
 
