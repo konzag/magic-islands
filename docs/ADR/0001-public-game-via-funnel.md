@@ -15,8 +15,8 @@ no network calls (CSP `connect-src 'none'`).
 
 ## Decision
 
-1. **Exposure (prod):** Tailscale Funnel on the public VM 106 (192.168.1.17), `https://public.tailc01d70.ts.net/`
-   (port 443) → `127.0.0.1:8087` (see the 2026-10-14 host amendment below).
+1. **Exposure (prod):** Tailscale Funnel on the public VM 106 (192.168.1.17), `https://public.tailc01d70.ts.net:8443/`
+   (port 8443; 443 on the same node is the games-hub entrance) → `127.0.0.1:8087` (see the 2026-10-14 host amendment below).
    It is public, with no Authelia. Staging is NOT on the Funnel; it is reachable only through Caddy + Authelia
    (`magic.staging.homelab.lan`).
 2. **Funnel allowlist in the app** (`app/core/guards.py`): a request marked `Tailscale-Funnel-Request` may only
@@ -51,8 +51,9 @@ no network calls (CSP `connect-src 'none'`).
 - Prod no longer runs on VM apps. Infra built a dedicated VM 106 `public` (192.168.1.17, homelab-scripts
   ADR-0042) for internet-facing apps: two firewalls with no route into the homelab, inbound only SSH from
   the workstation/Proxmox and 9100/8087 from monitor, and no homelab-scripts clone on the box.
-- The Funnel listens on **443**, not 8443: `https://public.tailc01d70.ts.net/` → `127.0.0.1:8087`. The node
-  is `tag:public`; the ACL gives the Funnel attribute only to that tag and grants nothing from it.
+- The Funnel listens on **8443**: `https://public.tailc01d70.ts.net:8443/` → `127.0.0.1:8087`. Port 443 on
+  the same node is games-hub, the common entrance for all the kids' games (owner request 2026-10-14), which
+  links here. The node is `tag:public`; the ACL gives the Funnel attribute only to that tag and grants nothing from it.
 - Nothing changes in the app: tailscaled still connects from 127.0.0.1, so the Funnel allowlist, the
   `/metrics` rule and `--forwarded-allow-ips=127.0.0.1` work as above.
 
