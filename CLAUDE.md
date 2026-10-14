@@ -3,7 +3,7 @@
 ## Project
 "Τα Μαγικά Νησιά": the owner's kids' HTML5 canvas game, served by a stateless FastAPI app (Python 3.11).
 Prod runs on the isolated public VM 106 (192.168.1.17) on port 8087 as `magic-islands.service`, and is public
-through Tailscale Funnel at https://public.tailc01d70.ts.net/ without Authelia (ADR-0001). Staging runs on VM staging (192.168.1.16) behind Caddy + Authelia only.
+through Tailscale Funnel at https://public.tailc01d70.ts.net:8443/ without Authelia (ADR-0001). Staging runs on VM staging (192.168.1.16) behind Caddy + Authelia only.
 There is no database, no user data, no secrets and no outbound calls.
 
 ## Rules
