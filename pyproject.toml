@@ -29,4 +29,4 @@ known-first-party = ["app"]
 python_version = "3.11"
 strict = true
 ignore_missing_imports = true
-files = ["app"]
+files = ["app", "tools"]
