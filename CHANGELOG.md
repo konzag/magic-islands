@@ -1,6 +1,11 @@
 # Changelog
 
 ## Unreleased
+- **Retired the FastAPI app** (WP3 final step, after the games-hub cut-over).
+  - The repo is now a static game repo (GAME-STANDARD §2): `index.html`, `assets/`, Playwright smoke.
+  - Removed: `app/` (incl. the frozen page, PWA and service worker), the Python tests, tools, Docker/compose,
+    Python config, `security.yml`, and the infra docs (deploy, runbook, standards).
+  - CI is now `test` (Playwright) + `gitleaks`. ADR-0001 is marked superseded.
 - Static game layout for games-hub (GAME-STANDARD §2, WP3, 2026-10-14): `index.html` at the repo root is the
   game as the hub serves it at `/magic-islands/`.
   - Removed: the service worker and the manifest.

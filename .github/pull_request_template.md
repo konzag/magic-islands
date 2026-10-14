@@ -1,10 +1,10 @@
-## Summary
-<!-- What does this PR change, and why? -->
+## Τι αλλάζει
+<!-- Τι κάνει αυτό το PR και γιατί; -->
 
-## Checklist
-- [ ] Targets `staging` (never `main`; the release PR staging -> main is the owner's GO)
-- [ ] `ruff check . && ruff format --check .`, `mypy`, `pytest` (coverage gate 90%) and `node --check` on the inline game script pass locally
-- [ ] Game page still self-contained (no `<script src>`, no inline handlers, no third-party URLs); `[hidden]` fix kept
-- [ ] New env vars added to `.env.example` (names only, no values)
-- [ ] No secrets, tokens or hostnames-with-credentials in code, logs or tests
-- [ ] Commits are GPG-signed
+## Έλεγχοι (GAME-STANDARD)
+- [ ] Στόχος το `staging` (ποτέ το `main`· το release PR staging → main θέλει GO του ιδιοκτήτη)
+- [ ] `npx playwright test` περνά (πληκτρολόγιο + αφή, 0 σφάλματα κονσόλας, CSP του hub)
+- [ ] Ένα `<script>`, χωρίς `eval`, χωρίς `onclick="…"`, χωρίς εξωτερικά URL (CDN, Google Fonts)
+- [ ] Δυσκολία μόνο μέσα στο `CONFIG`
+- [ ] Χωρίς προσωπικά δεδομένα, διαφημίσεις, αγορές
+- [ ] Υπογεγραμμένα commits

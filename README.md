@@ -1,87 +1,55 @@
-# magic-islands
+# 🐉 Τα Μαγικά Νησιά
 
-**Τα Μαγικά Νησιά** ("The Magic Islands"): a single-page HTML5 canvas game for the owner's kids, served as a
-homelab app. The UI is in Greek. You play with the keyboard (arrows, 1-4, Space, Q, P/Esc) or by touch
-(virtual d-pad + spell buttons).
+**Άνοιγμα online:** [https://public.tailc01d70.ts.net/magic-islands/](https://public.tailc01d70.ts.net/magic-islands/)
+(από το «Τα Παιχνίδια μας», το hub με όλα τα παιχνίδια του σπιτιού).
 
-## Moving into games-hub (GAME-STANDARD, 2026-10-14)
+**Ηλικία:** 6+ · tablet (οριζόντια), κινητό ή υπολογιστής · παιχνίδι-αναφορά του [GAME-STANDARD](https://github.com/konzag/games-template/blob/main/GAME-STANDARD.md).
 
-The game is becoming a static game repo like the other family games. It will be served by `konzag/games-hub`
-at `/magic-islands/` as a pinned submodule, and the FastAPI app below will be retired.
+## Η ιστορία
 
-- **`index.html` (repo root) is the game from now on.** It is the version for the hub: no service worker or
-  manifest, relative icons (`assets/`), the hub's font (`/static/fonts/comfortaa.css`), plus 🏠 (back to
-  `/`), ⛶ / F (fullscreen), M (sound) and pause on focus loss. The game logic is unchanged.
-- `tests/smoke.spec.ts` (Playwright, CI job `game-smoke`) serves it with the hub's CSP. It plays 10 s with the
-  keyboard and 10 s with touch, and requires 0 console errors and 0 CSP violations.
-- `app/static/index.html` is a **frozen copy** for the running app on :8443 (with its PWA). It is removed
-  together with the app in a later PR, after the hub serves the game in production and port 8087 is closed.
-  Until then, change the game in `index.html` only.
+Ένας κακός, ο Μαγοφάγος, θέλει να πάρει όλη τη μαγεία από τα 4 νησιά. Δύο πνεύματα, ο **Ναπολέων** (νερό,
+ήλιος, φύση) και η **Αριάνα** (καιρός, χιόνι, πάγος), πετάνε με τον δράκο τους, τον **Ζαφείρη**, για να τη
+σώσουν. Σε κάθε νησί βρίσκουν φίλους, μαζεύουν κλειδιά και διώχνουν τα κακά ξόρκια. Αν κουραστούν, ο Ζαφείρης
+τους γυρίζει πίσω για να ξαναπροσπαθήσουν.
 
-The app is a small stateless FastAPI service. It serves the game page from memory with a strict, hash-based
-Content-Security-Policy, plus the fleet's standard infra endpoints. It has no database, no user data, no
-secrets and no outbound calls.
+## Χειρισμός
 
-## Layout
+| | Πληκτρολόγιο | Αφή |
+|---|---|---|
+| Κίνηση | βελάκια ή WASD | d-pad αριστερά |
+| Ξόρκια | 1 2 3 4 | κουμπιά κάτω |
+| Η Ίριδα βοηθάει (μία φορά σε κάθε νησί) | Space | 🌈 |
+| Αλλαγή ήρωα | Q ή Tab | 🔄 ή κάρτα ήρωα |
+| Παύση | P ή Esc | ⏸ |
+| Ήχος · πλήρης οθόνη | M · F | 🔊 · ⛶ |
+| Πίσω στα παιχνίδια | | 🏠 |
+
+Η πρόοδος (σε ποιο νησί έφτασες) μένει μόνο στη συσκευή (localStorage). Τίποτα δεν στέλνεται πουθενά.
+
+## Το repo
+
+Στατικό παιχνίδι (GAME-STANDARD §2): όλο το παιχνίδι είναι το `index.html` (ένα `<style>`, ένα `<script>`,
+χωρίς build). Το games-hub το σερβίρει στο `/magic-islands/` ως git submodule, καρφωμένο σε SHA.
 
 ```
-app/
-  main.py               wiring only (STD-03)
-  api/game.py           GET/HEAD /  (the page, ETag), /sw.js (service worker) and /favicon.ico
-  api/health.py         /health/live, /health/ready, /api/health, /health/security, /version
-  core/guards.py        Funnel allowlist + /metrics peer rule (ADR-0001)
-  core/middleware.py    security headers, Cache-Control, request log (no client IPs)
-  core/observability.py /metrics + app_build_info, optional OpenTelemetry
-  services/page.py      loads static/index.html, computes the CSP hashes
-  services/pwa.py       builds /sw.js from services/sw.js (cache version = commit + page hash)
-  static/index.html     the game (one inline <script>, one inline <style>)
-  static/fonts/         Comfortaa 500/700, Greek + Latin, self-hosted (OFL 1.1)
-  static/manifest.webmanifest, static/icons/   installable app (icons from tools/make_icons.py)
-tools/
-  extract_inline_js.py  inline script -> .js for `node --check` (CI)
-  smoke.sh              post-deploy smoke
-docs/                   ADR-0001 (exposure + N/A standards), deploy.md, runbook.md, standards.md
+index.html            το παιχνίδι
+assets/               εικονίδια (icon.svg, icon-180.png)
+tests/smoke.spec.ts   Playwright: φόρτωση, 10 δευτ. με πλήκτρα και με αφή, 0 σφάλματα, CSP του hub
+tests/serve.mjs       μικρός server που μιμείται το hub (ίδιο CSP: tests/hub-csp.mjs)
 ```
-
-## Endpoints
-
-| Path | Who can reach it |
-|---|---|
-| `/`, `/sw.js`, `/static/*`, `/favicon.ico`, `/health/live` | everyone, including the Funnel |
-| `/health/ready`, `/api/health`, `/health/security`, `/version` | LAN / Caddy / localhost, never the Funnel |
-| `/metrics` | direct requests from `METRICS_ALLOW_IPS` (Prometheus, 192.168.1.11) only |
-
-## Updating the game
-
-Edit `index.html` (repo root; see above) and keep it self-contained: no `<script src>`, no inline `on…=` handlers, no
-third-party URLs. The CSP hashes follow automatically at startup. CI runs `node --check` on the inline
-script, and the tests make sure every inline block is covered by the policy.
-
-The page has a homelab fix appended to its `<style>`: `[hidden]{display:none!important;}`. Without it,
-`.screen{display:grid}` overrode the `hidden` attribute, and the pause/lose/win screens covered the start
-button. Keep this rule when you replace the file.
-
-## Local development
 
 ```bash
-python -m venv .venv && .venv/Scripts/pip install -r requirements-dev.txt   # (bin/ on Linux)
-uvicorn app.main:app --port 8087 --reload        # http://127.0.0.1:8087/
-pytest                                          # coverage gate 90 %
-ruff check . && ruff format --check . && mypy
+npm ci && npx playwright install chromium
+npx playwright test     # desktop (πληκτρολόγιο) + tablet (αφή)
+npm run serve           # http://127.0.0.1:4173/
 ```
 
-## Delivery (Option B, same as the other apps)
+Ροή: feature branch → PR στο `staging` → CI πράσινο → release PR → **GO** → `main` → PR στο games-hub που
+μετακινεί το submodule.
 
-feature branch → PR to `staging` → **CI** (`test` job) → **Auto-merge** merges green PRs → VM staging deploys
-`staging` → release PR `staging → main` → **merged only after the owner's GO** → the public VM 106 deploys `main`.
-Infra deploys a commit only when its `test` check is green. Registration steps: `docs/deploy.md`.
+Ιστορικό: μέχρι τις 2026-10-14 το παιχνίδι σερβιριζόταν από δικό του FastAPI app (θύρα 8087, Funnel 8443).
+Αποσύρθηκε όταν μπήκε στο hub ([ADR-0001](docs/ADR/0001-public-game-via-funnel.md), superseded).
 
-## Origin
+## Άδεια
 
-Created 2026-10-13 from `konzag/template-app` (golden master, STD-10). The DB layer, Alembic and SOPS were
-removed, because the app has no state and no secrets (ADR-0001). The CI, delivery and core modules follow
-`homelab-dashboard`, the other stateless fleet app.
-
-## License
-
-Code: MIT (`LICENSE`). Font: SIL Open Font License 1.1 (`app/static/fonts/OFL.txt`).
+Κώδικας: MIT (`LICENSE`).

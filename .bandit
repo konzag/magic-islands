@@ -1,6 +1,0 @@
-# YAML config for `bandit -c .bandit -r . -x ./tests` (ci.yml) and security.yml.
-exclude_dirs: ["tests", "venv", ".venv"]
-skips:
-  - B101
-  - B404
-  - B603

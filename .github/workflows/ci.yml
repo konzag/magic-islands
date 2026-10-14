@@ -1,9 +1,10 @@
 name: CI
 
-# Every push (feature branches, staging, main) runs lint, types, tests with coverage gate and a fast
-# security scan. Minutes are kept low: one event (push only, no duplicate pull_request run: a PR shows the
-# push run of its head commit), superseded runs cancelled, pip cache. No paths filter on purpose: every
-# commit must carry a CI status, because infra deploys a commit only if its `test` check is green.
+# Static game repo (GAME-STANDARD §2): every push runs the Playwright smoke of index.html under the
+# games-hub CSP (GAME-STANDARD §7) and a secret scan; Auto-merge waits for these checks. Same conventions as the
+# fleet:
+# push only (a PR shows the push run of its head commit), superseded runs cancelled, actions pinned by SHA,
+# read-only token, pinned and checksum-verified tools.
 on:
   push:
   workflow_dispatch:
@@ -15,35 +16,13 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  GITLEAKS_VERSION: "8.30.1"
+  GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+
 jobs:
   test:
     name: test
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.11"   # template-app standard
-          cache: pip
-          cache-dependency-path: requirements*.txt
-      - name: Install
-        run: pip install -r requirements-dev.txt
-      - name: Lint (ruff)
-        run: ruff check . && ruff format --check .
-      - name: Types (mypy, strict)
-        run: mypy
-      - name: Game script syntax (node --check on the inline <script>)
-        run: python tools/extract_inline_js.py "$RUNNER_TEMP/game.js" && node --check "$RUNNER_TEMP/game.js" && node --check app/services/sw.js
-      - name: Tests + coverage gate (pytest.ini, 90%)
-        run: pytest
-      - name: Dependency audit (pip-audit)
-        run: pip-audit -r requirements.txt -r requirements-dev.txt --progress-spinner off
-      - name: SAST (bandit)
-        run: bandit -c .bandit -r . -x ./tests,./.venv
-
-  game-smoke:
-    name: game-smoke
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -56,7 +35,7 @@ jobs:
         run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Playwright smoke of index.html under the games-hub CSP (GAME-STANDARD §7)
+      - name: Playwright smoke (keyboard + touch, 0 console errors, hub CSP)
         run: npx playwright test
       - name: Upload Playwright report
         if: failure()
@@ -67,3 +46,20 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 14
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks (pinned, checksum-verified)
+        run: |
+          f="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSLo "$f" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$f"
+          echo "${GITLEAKS_SHA256}  $f" | sha256sum -c -
+          tar -xzf "$f" gitleaks && sudo install -m 0755 gitleaks /usr/local/bin/gitleaks && rm -f gitleaks "$f"
+      - name: Gate - fail on any finding
+        run: gitleaks detect --source=. --redact --no-banner

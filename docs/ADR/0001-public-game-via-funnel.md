@@ -1,6 +1,8 @@
 # ADR-0001: Public, auth-less kids' game behind Tailscale Funnel
 
-- Status: accepted (owner, 2026-10-13)
+- Status: **superseded** (2026-10-14) by GAME-STANDARD v1 §1 and konzag/games-hub ADR-0001: the game is a static
+  page served by games-hub at `/magic-islands/`; this repo's FastAPI app, port 8087 and Funnel 8443 are retired.
+  Kept for history.
 - Context date: 2026-10-13
 
 ## Context
