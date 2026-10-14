@@ -47,3 +47,9 @@ coverage.xml
 .daily-commit
 # Incoming drops (source of app/static/index.html)
 _incoming/
+
+# Playwright (tests/smoke.spec.ts)
+node_modules/
+test-results/
+playwright-report/
+blob-report/

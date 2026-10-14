@@ -7,9 +7,10 @@ through Tailscale Funnel at https://public.tailc01d70.ts.net:8443/ without Authe
 There is no database, no user data, no secrets and no outbound calls.
 
 ## Rules
-- The game is `app/static/index.html`, one self-contained file. Never add `<script src>`, inline event
-  handlers, third-party URLs or network calls. The CSP is hash-based (`app/services/page.py`) and must never
-  get `'unsafe-inline'` / `'unsafe-eval'`.
+- The game is `index.html` at the repo root, one self-contained file, served by games-hub at `/magic-islands/`.
+  `app/static/index.html` is a frozen copy for the old app until it is retired; do not change it. Never add
+  `<script src>`, inline event handlers, third-party URLs, a service worker or network calls. The hub's CSP is
+  hash-based and never has `'unsafe-inline'` / `'unsafe-eval'`. `npx playwright test` checks the game under it.
 - Keep the `[hidden]{display:none!important;}` rule at the end of the page's `<style>` (game fix).
 - Funnel exposure is an allowlist (`app/core/guards.py`). A new route is NOT public unless it is added
   there on purpose. `/metrics` stays restricted to direct peers in METRICS_ALLOW_IPS.
