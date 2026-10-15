@@ -3,8 +3,8 @@
 ## Project
 "Τα Μαγικά Νησιά": the owner's kids' HTML5 canvas game (Greek UI). A **static game repo** (GAME-STANDARD §2):
 the whole game is `index.html` at the repo root. konzag/games-hub serves it at `/magic-islands/` as a pinned
-git submodule (public via Tailscale Funnel, no login). There is no server code here any more: the FastAPI app,
-port 8087 and Funnel 8443 were retired on 2026-10-14 (old ADR-0001 kept as superseded history).
+git submodule (public, no login). There is no server code here any more: the old server app was retired on
+2026-10-15 (its history is in git). Never add hosts, ports, IPs or internal hostnames to this public repo.
 
 ## Standard
 The game follows **GAME-STANDARD v1** and is its reference game: https://github.com/konzag/games-template/blob/main/GAME-STANDARD.md

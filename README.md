@@ -1,7 +1,6 @@
 # 🐉 Τα Μαγικά Νησιά
 
-**Άνοιγμα online:** [https://public.tailc01d70.ts.net/magic-islands/](https://public.tailc01d70.ts.net/magic-islands/)
-(από το «Τα Παιχνίδια μας», το hub με όλα τα παιχνίδια του σπιτιού).
+**Παίζεται στο «Τα Παιχνίδια μας»**, το hub με όλα τα παιχνίδια του σπιτιού (κάρτα «Τα Μαγικά Νησιά», διαδρομή `/magic-islands/`).
 
 **Ηλικία:** 6+ · tablet (οριζόντια), κινητό ή υπολογιστής · παιχνίδι-αναφορά του [GAME-STANDARD](https://github.com/konzag/games-template/blob/main/GAME-STANDARD.md).
 
@@ -47,8 +46,7 @@ npm run serve           # http://127.0.0.1:4173/
 Ροή: feature branch → PR στο `staging` → CI πράσινο → release PR → **GO** → `main` → PR στο games-hub που
 μετακινεί το submodule.
 
-Ιστορικό: μέχρι τις 2026-10-14 το παιχνίδι σερβιριζόταν από δικό του FastAPI app (θύρα 8087, Funnel 8443).
-Αποσύρθηκε όταν μπήκε στο hub ([ADR-0001](docs/ADR/0001-public-game-via-funnel.md), superseded).
+Ιστορικό: μέχρι τις 2026-10-14 το παιχνίδι είχε δικό του server app. Αποσύρθηκε όταν μπήκε στο hub (το ιστορικό είναι στο git).
 
 ## Άδεια
 
