@@ -39,7 +39,7 @@ jobs:
         run: bandit -r . -ll -c .bandit -f sarif -o bandit.sarif -x ./tests,./venv,./.venv || true
       - name: Gate - fail on MEDIUM+ findings
         run: bandit -r . -ll -c .bandit -f txt -x ./tests,./venv,./.venv
-      - uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+      - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         if: always()
         continue-on-error: true
         with:
@@ -74,7 +74,7 @@ jobs:
             --redact -v --exit-code=0
       - name: Gate - fail on any finding
         run: gitleaks detect --source=. --redact --no-banner
-      - uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+      - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         if: always()
         continue-on-error: true
         with:
@@ -112,7 +112,7 @@ jobs:
         env:
           TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
         run: trivy fs . --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1
-      - uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+      - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         if: always()
         continue-on-error: true
         with:
@@ -137,7 +137,7 @@ jobs:
         run: pip install 'semgrep==1.180.0'
       - name: Run Semgrep (gate - fails on findings, SARIF still uploaded)
         run: semgrep --config auto --error --sarif --output semgrep.sarif .
-      - uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+      - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         if: always()
         continue-on-error: true
         with:
