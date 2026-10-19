@@ -70,8 +70,8 @@ a.icon-btn{text-decoration:none;color:inherit;}
 @keyframes pop{from{transform:translateX(-50%) scale(.6);opacity:0}to{transform:translateX(-50%) scale(1);opacity:1}}
 
 /* Spell bar */
-#spellbar{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);transform:translateX(-50%);display:flex;gap:10px;pointer-events:auto;}
-.spell{position:relative;width:80px;height:80px;border-radius:18px;background:var(--panel);border:2px solid var(--panel-edge);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;overflow:hidden;touch-action:none;}
+#spellbar{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);transform:translateX(-50%);display:flex;gap:8px;pointer-events:auto;}
+.spell{position:relative;width:68px;height:68px;border-radius:18px;background:var(--panel);border:2px solid var(--panel-edge);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;overflow:hidden;touch-action:none;}
 .spell .ic{font-size:30px;line-height:1;position:relative;z-index:1;}
 .spell .nm{font-size:10px;line-height:1.1;text-align:center;padding:0 4px;position:relative;z-index:1;color:var(--ink-dim);}
 .spell .key{position:absolute;top:4px;left:7px;font-size:12px;font-weight:700;color:var(--gold);z-index:1;}
@@ -82,15 +82,16 @@ a.icon-btn{text-decoration:none;color:inherit;}
 .spell.iris.used{filter:grayscale(1);opacity:.5;}
 .spell.swap .ic{font-size:26px;}
 
-/* Touch controls */
-#dpad{position:absolute;left:calc(16px + env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 18px);width:168px;height:168px;border-radius:50%;background:rgba(22,15,52,.55);border:2px solid var(--panel-edge);touch-action:none;pointer-events:auto;}
-#dpad span{position:absolute;width:52px;height:52px;display:grid;place-items:center;font-size:26px;border-radius:14px;background:rgba(255,255,255,.1);}
-#dpad .u{left:58px;top:6px}#dpad .d{left:58px;bottom:6px}#dpad .l{left:6px;top:58px}#dpad .r{right:6px;top:58px}
-#dpad span.on{background:rgba(255,212,94,.45);}
-body.touch #spellbar{left:auto;right:calc(16px + env(safe-area-inset-right,0px));transform:none;display:grid;grid-template-columns:repeat(3,64px);gap:10px;}
-body.touch .spell{width:64px;height:64px;border-radius:50%;}
+/* Touch controls: floating joystick. It appears where the thumb lands in the left 45 % (under the HUD, which
+   stays on top), analog in every direction, and fades out on release. */
+#joyzone{position:absolute;left:0;top:0;bottom:0;width:45%;touch-action:none;pointer-events:auto;}
+#joy{position:absolute;left:0;top:0;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;background:rgba(22,15,52,.45);border:2px solid var(--panel-edge);opacity:0;transition:opacity .25s;pointer-events:none;}
+#joy.on{opacity:1;transition:opacity .08s;}
+#joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:rgba(255,212,94,.85);box-shadow:0 2px 8px rgba(0,0,0,.35);}
+body.touch #spellbar{left:auto;right:calc(16px + env(safe-area-inset-right,0px));transform:none;display:grid;grid-template-columns:repeat(3,56px);gap:8px;}
+body.touch .spell{width:56px;height:56px;border-radius:50%;}
 body.touch .spell .nm,body.touch .spell .key{display:none;}
-body.touch .spell .ic{font-size:28px;}
+body.touch .spell .ic{font-size:24px;}
 
 /* Dialog */
 #dialog{position:absolute;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);margin:0 auto;max-width:900px;display:flex;gap:16px;align-items:center;padding:14px 18px;background:var(--panel);border:3px solid var(--panel-edge);border-radius:24px;box-shadow:0 10px 40px rgba(0,0,0,.4);cursor:pointer;}
@@ -144,10 +145,11 @@ body.touch .spell .ic{font-size:28px;}
 </head>
 <body>
 
-<div id="app">
+<main id="app">
   <canvas id="cv"></canvas>
 
   <div id="hud" hidden>
+    <div id="joyzone" hidden><div id="joy"><i></i></div></div>
     <div class="hud-top">
       <div class="heroes">
         <button class="hero-card nap" id="card0" aria-label="Παίξε με τον Ναπολέοντα"><span class="hc-name">🌸 Ναπολέων <small id="st0"></small></span><span class="bar"><i id="hp0"></i></span></button>
@@ -167,7 +169,6 @@ body.touch .spell .ic{font-size:28px;}
       </div>
     </div>
     <div id="banner" hidden></div>
-    <div id="dpad" hidden><span class="u">▲</span><span class="d">▼</span><span class="l">◀</span><span class="r">▶</span></div>
     <div id="spellbar">
       <button class="spell" data-k="0"><span class="key">1</span><span class="ic"></span><span class="nm"></span></button>
       <button class="spell" data-k="1"><span class="key">2</span><span class="ic"></span><span class="nm"></span></button>
@@ -235,7 +236,7 @@ body.touch .spell .ic{font-size:28px;}
       <a class="home-link" href="/">🏠 Πίσω στα παιχνίδια</a>
     </div>
   </section>
-</div>
+</main>
 
 <script>
 (function(){
@@ -270,7 +271,7 @@ const ISL=[
   intro:[{w:'iris',t:'Γεια σας! Είμαι η Ίριδα, το ουράνιο τόξο που μιλάει!'},
          {w:'iris',t:'Αυτή είναι η Μονοκέρια, το νησί της Φύσης.'},
          {w:'iris',t:'Η κακιά Ραβεντζίλα θέλει να κλέψει τη μαγεία της!'},
-         {w:'iris',t:'Τα βελάκια σάς κινούν. Τα 1, 2, 3, 4 ρίχνουν ξόρκια!',tt:'Τα βελάκια σάς κινούν. Τα κουμπιά δεξιά ρίχνουν ξόρκια!'},
+         {w:'iris',t:'Τα βελάκια σάς κινούν. Τα 1, 2, 3, 4 ρίχνουν ξόρκια!',tt:'Ακούμπα αριστερά και σύρε το δάχτυλο για να κινηθείς. Τα κουμπιά δεξιά ρίχνουν ξόρκια!'},
          {w:'iris',t:'Με το Q αλλάζετε ήρωα. Πάμε!',tt:'Με το 🔄 αλλάζετε ήρωα. Πάμε!'}],
   bossIntro:[{w:'boss',t:'Κρααα! Τα λουλούδια και η μαγεία τους είναι δικά μου!'},{w:'iris',t:'Η Ραβεντζίλα! Προσοχή στα φτερά που πετάει!'}]},
  {name:'Γοργονία',power:'της Θάλασσας',underwater:true,amb:'bubble',bg:['#0f6597','#03203d'],g1:'#dcc98f',g2:'#cfba7e',gl:'rgba(120,90,40,.14)',rim:'#f4e6b4',cliff1:'#8a7650',cliff2:'#665434',
@@ -842,9 +843,9 @@ function setState(s){
   $('flight-skip').hidden=s!=='flight';
   hudEl.hidden=!(s==='play'||s==='dialog'||s==='paused');
   $('spellbar').hidden=s!=='play';
-  $('dpad').hidden=!(s==='play'&&isTouch);
+  $('joyzone').hidden=!(s==='play'&&isTouch);
   if(s!=='dialog')dlgEl.hidden=true;
-  if(s!=='play')touchV.x=touchV.y=0;
+  if(s!=='play'){touchV.x=touchV.y=0;joyId=null;$('joy').classList.remove('on');}
 }
 let DLG=null;
 function dialog(lines,done){
@@ -942,25 +943,40 @@ function inputVec(){
   const l=Math.hypot(x,y);if(l>1){x/=l;y/=l;}
   return {x,y};
 }
-function enableTouch(){if(isTouch)return;isTouch=true;document.body.classList.add('touch');if(G.state==='play')$('dpad').hidden=false;}
+function enableTouch(){if(isTouch)return;isTouch=true;document.body.classList.add('touch');if(G.state==='play')joyZone.hidden=false;}
 if(isTouch)document.body.classList.add('touch');
 addEventListener('touchstart',enableTouch,{passive:true});
-const dpad=$('dpad');let dpadId=null;
-function dpadMove(e){
-  const r=dpad.getBoundingClientRect();const dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);
-  const l=Math.hypot(dx,dy);const spans=dpad.querySelectorAll('span');spans.forEach(s=>s.classList.remove('on'));
-  if(l<r.width*0.12){touchV.x=touchV.y=0;return;}
-  const a=Math.round(Math.atan2(dy,dx)/(Math.PI/4))*(Math.PI/4);
-  touchV.x=Math.round(Math.cos(a)*100)/100;touchV.y=Math.round(Math.sin(a)*100)/100;
-  if(touchV.y<-0.3)dpad.querySelector('.u').classList.add('on');
-  if(touchV.y>0.3)dpad.querySelector('.d').classList.add('on');
-  if(touchV.x<-0.3)dpad.querySelector('.l').classList.add('on');
-  if(touchV.x>0.3)dpad.querySelector('.r').classList.add('on');
+/* Floating joystick: the base appears under the thumb (kept clear of the top HUD and the screen edges), the knob
+   follows it up to JOY_R px. touchV = offset / JOY_R: direction in 360°, length = speed, 12 % dead zone.
+   One pointer drives it (setPointerCapture); other fingers stay free for the spell buttons. */
+const joyZone=$('joyzone'),joy=$('joy'),joyKnob=joy.firstElementChild;
+const JOY_BASE=55,JOY_R=44,JOY_DEAD=0.12;let joyId=null,joyX=0,joyY=0;
+function joyPlace(e){
+  const top=document.querySelector('.hud-top').getBoundingClientRect().bottom+8;
+  joyX=clamp(e.clientX,JOY_BASE+8,innerWidth-JOY_BASE-8);
+  joyY=clamp(e.clientY,top+JOY_BASE,innerHeight-JOY_BASE-8);
+  joy.style.transform=`translate(${joyX}px,${joyY}px)`;
 }
-dpad.addEventListener('pointerdown',e=>{e.preventDefault();dpadId=e.pointerId;try{dpad.setPointerCapture(e.pointerId);}catch(_){}dpadMove(e);});
-dpad.addEventListener('pointermove',e=>{if(e.pointerId===dpadId)dpadMove(e);});
-const dpadEnd=e=>{if(e.pointerId===dpadId){dpadId=null;touchV.x=touchV.y=0;dpad.querySelectorAll('span').forEach(s=>s.classList.remove('on'));}};
-dpad.addEventListener('pointerup',dpadEnd);dpad.addEventListener('pointercancel',dpadEnd);
+function joyMove(e){
+  const dx=e.clientX-joyX,dy=e.clientY-joyY,l=Math.hypot(dx,dy),k=l>JOY_R?JOY_R/l:1;
+  joyKnob.style.transform=`translate(${dx*k}px,${dy*k}px)`;
+  const m=Math.min(l/JOY_R,1);
+  if(m<JOY_DEAD){touchV.x=touchV.y=0;return;}
+  const sp=(m-JOY_DEAD)/(1-JOY_DEAD);
+  touchV.x=dx/l*sp;touchV.y=dy/l*sp;
+}
+function joyEnd(e){
+  if(e&&e.pointerId!==joyId)return;
+  joyId=null;touchV.x=touchV.y=0;joy.classList.remove('on');joyKnob.style.transform='';
+}
+joyZone.addEventListener('pointerdown',e=>{
+  if(joyId!==null||G.state!=='play')return;
+  e.preventDefault();joyId=e.pointerId;try{joyZone.setPointerCapture(e.pointerId);}catch(_){}
+  joyPlace(e);joy.classList.add('on');joyMove(e);
+});
+joyZone.addEventListener('pointermove',e=>{if(e.pointerId===joyId)joyMove(e);});
+joyZone.addEventListener('pointerup',joyEnd);joyZone.addEventListener('pointercancel',joyEnd);
+joyZone.addEventListener('lostpointercapture',joyEnd);
 spellBtns.forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();if(G.state==='play')castActive(+b.dataset.k);}));
 $('iris-btn').addEventListener('pointerdown',e=>{e.preventDefault();if(G.state==='play')useIris();});
 $('swap-btn').addEventListener('pointerdown',e=>{e.preventDefault();if(G.state==='play')switchHero();});
@@ -1379,6 +1395,8 @@ function frame(now){
 }
 setState('title');
 requestAnimationFrame(frame);
+// Test probe (Playwright only): /?e2e exposes the game state read-only by reference; normal play never sets it.
+if(new URLSearchParams(location.search).has('e2e'))window.__mi={get G(){return G;},get touchV(){return touchV;}};
 })();
 </script>
 </body>

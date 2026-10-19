@@ -1,6 +1,16 @@
 # Changelog
 
 ## Unreleased
+- **Floating joystick** replaces the 4-arrow d-pad (touch, FIX-1).
+  - It appears where the thumb lands in the left 45 % of the screen and stays below the top HUD.
+  - Base 110 px (was 168 px), knob 48 px. Analog 360°: the drag length sets the speed, with a 12 % dead zone.
+  - It fades out on release. Pointer Events with `setPointerCapture`, one finger, so a second finger can use the spell
+    buttons at the same time.
+  - Spell buttons ~15 % smaller: touch 56 px (was 64), desktop 68 px (was 80). 🔄 and the keyboard are unchanged.
+  - The game is wrapped in `<main>` (axe `region`).
+  - `/?e2e` exposes a read-only test probe (`window.__mi`) for Playwright only.
+  - New `tests/joystick.spec.ts`: 8 directions, release stops, analog/dead zone, two fingers, layout and axe.
+    It runs at 780x360, 820x1180 and 1180x820.
 - **Retired the FastAPI app** (WP3 final step, after the games-hub cut-over).
   - The repo is now a static game repo (GAME-STANDARD §2): `index.html`, `assets/`, Playwright smoke.
   - Removed: `app/` (incl. the frozen page, PWA and service worker), the Python tests, tools, Docker/compose,

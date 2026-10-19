@@ -73,7 +73,7 @@ test('keyboard: start, 10 s of play, pause, sound, 0 errors', async ({ page }, i
   expect(problems).toEqual([]);
 });
 
-test('touch: d-pad and spell buttons for 10 s, 0 errors', async ({ page }, info) => {
+test('touch: joystick and spell buttons for 10 s, 0 errors', async ({ page }, info) => {
   test.skip(info.project.name !== 'tablet');
   const problems = await watch(page);
   await page.goto('/');
@@ -89,10 +89,10 @@ test('touch: d-pad and spell buttons for 10 s, 0 errors', async ({ page }, info)
       continue;
     }
     played = true;
-    await expect(page.locator('#dpad')).toBeVisible();
-    const d = (await page.locator('#dpad').boundingBox())!;
-    const cx = d.x + d.width / 2;
-    const cy = d.y + d.height / 2;
+    await expect(page.locator('#joyzone')).toBeVisible();
+    const d = { width: 110, height: 110 }; // the joystick base
+    const cx = page.viewportSize()!.width * 0.22;
+    const cy = page.viewportSize()!.height * 0.65;
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: cx, y: cy, id: 1 }] });
     for (let k = 0; k < 10; k++) {
       const a = (round * 10 + k) / 3;
