@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
-// Two Chromium projects: a desktop with keyboard, and a landscape tablet with touch (GAME-STANDARD §3, §7).
+// Chromium projects: a desktop with keyboard, a landscape tablet with touch (GAME-STANDARD §3, §7), and for the
+// joystick spec also a landscape phone and a portrait tablet.
 export default defineConfig({
   testDir: 'tests',
   testMatch: '*.spec.ts',
@@ -19,6 +20,17 @@ export default defineConfig({
     {
       name: 'tablet',
       use: { viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+    },
+    // Floating joystick (tests/joystick.spec.ts) also on a landscape phone and a portrait tablet.
+    {
+      name: 'phone',
+      testMatch: 'joystick.spec.ts',
+      use: { viewport: { width: 780, height: 360 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+    },
+    {
+      name: 'tablet-portrait',
+      testMatch: 'joystick.spec.ts',
+      use: { viewport: { width: 820, height: 1180 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
     },
   ],
 });
