@@ -16,7 +16,7 @@ Playwright smoke (§7). New games start from `konzag/games-template`.
   `<script src>` from elsewhere, inline event handlers (`onclick="…"`), `eval`, third-party URLs (CDN, Google
   Fonts), a service worker or network calls. The font comes from the hub: `/static/fonts/comfortaa.css`.
 - Keep the `[hidden]{display:none!important;}` rule at the end of the `<style>` (game fix: overlays).
-- Shell stays: 🏠 to `/`, ⏸/P/Esc, 🔊/M, ⛶/F, pause on hidden tab / blur, touch d-pad + spell buttons.
+- Shell stays: 🏠 to `/`, ⏸/P/Esc, 🔊/M, ⛶/F, pause on hidden tab / blur, touch floating joystick (left 45 %) + spell buttons.
 - Progress only in localStorage (`magic-islands.progress.v1`), always in try/catch.
 - All UI text in Greek; docs in English or Greek.
 - `npx playwright test` must stay green: 10 s keyboard + 10 s touch, 0 console errors, 0 CSP violations under
