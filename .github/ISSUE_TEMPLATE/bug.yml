@@ -1,0 +1,96 @@
+name: Πρόβλημα
+description: Κάτι στο παιχνίδι «Τα Μαγικά Νησιά» δεν δουλεύει όπως λέει το README.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Το repo είναι δημόσιο: **χωρίς προσωπικά δεδομένα** (ούτε κωδικός, ούτε ονόματα παιδιών ή προφίλ, ούτε
+        διευθύνσεις του σπιτιού) και χωρίς αποκαλύψεις μυστικών του παιχνιδιού.
+        Πρόσθεσε τις ετικέτες `ui`, `a11y` ή `security` όπου ταιριάζει.
+  - type: input
+    id: game
+    attributes:
+      label: Παιχνίδι
+      value: "Τα Μαγικά Νησιά"
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Περιβάλλον
+      options:
+        - παραγωγή (prod)
+        - staging
+        - τοπικά (npm run serve)
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Συσκευή και browser
+      placeholder: π.χ. Android tablet, Chrome
+    validations:
+      required: true
+  - type: dropdown
+    id: width
+    attributes:
+      label: Πλάτος
+      options:
+        - 1280 (υπολογιστής)
+        - 1180x820 (tablet οριζόντια)
+        - 820x1180 (tablet κάθετα)
+        - 780x360 (κινητό οριζόντια)
+        - 360 (κινητό κάθετα)
+        - άλλο (γράψ' το στα βήματα)
+    validations:
+      required: true
+  - type: dropdown
+    id: theme
+    attributes:
+      label: Θέμα της συσκευής
+      options:
+        - light
+        - dark
+    validations:
+      required: true
+  - type: input
+    id: case
+    attributes:
+      label: Αριθμός δοκιμής
+      description: Από τη λίστα δοκιμών του README (π.χ. MI-03), ή «καμία».
+  - type: dropdown
+    id: area
+    attributes:
+      label: Είδος
+      multiple: true
+      options:
+        - ui (εμφάνιση, διάταξη)
+        - a11y (πληκτρολόγιο, αναγνώστης οθόνης, αντίθεση)
+        - security
+        - άλλο
+  - type: textarea
+    id: steps
+    attributes:
+      label: Βήματα
+      placeholder: "1. Άνοιξε ...\n2. Πάτα ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Αναμενόμενο
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Τι έγινε
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: Σύρε μια εικόνα εδώ (χωρίς ονόματα, κωδικό ή διευθύνσεις).

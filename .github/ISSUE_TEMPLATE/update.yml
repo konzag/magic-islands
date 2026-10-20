@@ -1,0 +1,85 @@
+name: Αλλαγή
+description: Μια αλλαγή ή κάτι νέο για το παιχνίδι «Τα Μαγικά Νησιά».
+title: "update: "
+labels: ["update"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Το repo είναι δημόσιο: **χωρίς προσωπικά δεδομένα** (ούτε κωδικός, ούτε ονόματα παιδιών ή προφίλ, ούτε
+        διευθύνσεις του σπιτιού) και χωρίς αποκαλύψεις μυστικών του παιχνιδιού.
+        Πρόσθεσε τις ετικέτες `ui`, `a11y` ή `security` όπου ταιριάζει.
+  - type: input
+    id: game
+    attributes:
+      label: Παιχνίδι
+      value: "Τα Μαγικά Νησιά"
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Περιβάλλον όπου το είδες
+      options:
+        - παραγωγή (prod)
+        - staging
+        - τοπικά (npm run serve)
+  - type: input
+    id: device
+    attributes:
+      label: Συσκευή και browser
+      placeholder: π.χ. iPad, Safari
+  - type: dropdown
+    id: width
+    attributes:
+      label: Πλάτος
+      options:
+        - 1280 (υπολογιστής)
+        - 1180x820 (tablet οριζόντια)
+        - 820x1180 (tablet κάθετα)
+        - 780x360 (κινητό οριζόντια)
+        - 360 (κινητό κάθετα)
+        - άλλο / όλα
+  - type: dropdown
+    id: theme
+    attributes:
+      label: Θέμα της συσκευής
+      options:
+        - light
+        - dark
+        - και τα δύο
+  - type: input
+    id: case
+    attributes:
+      label: Αριθμός δοκιμής που αφορά
+      description: Από τη λίστα δοκιμών του README (π.χ. MI-05), ή «νέα».
+  - type: dropdown
+    id: area
+    attributes:
+      label: Είδος
+      multiple: true
+      options:
+        - ui (εμφάνιση, διάταξη)
+        - a11y (πληκτρολόγιο, αναγνώστης οθόνης, αντίθεση)
+        - security
+        - άλλο
+  - type: textarea
+    id: what
+    attributes:
+      label: Τι να αλλάξει
+      description: Σήμερα κάνει αυτό (τι γίνεται)· θα έπρεπε να κάνει εκείνο (αναμενόμενο).
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Πού το βλέπω (βήματα)
+  - type: textarea
+    id: why
+    attributes:
+      label: Γιατί
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot ή σκίτσο
+      description: Σύρε μια εικόνα εδώ (χωρίς ονόματα, κωδικό ή διευθύνσεις).
