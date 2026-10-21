@@ -1,6 +1,20 @@
 # Changelog
 
 ## Unreleased
+- **Particle effects** (G1-MI-PARTICLES, PR #20): one pooled particle system drawn with code on the canvas.
+  - `CONFIG.particles` at the top of the script: `enabled`, `max` (250) and a count per effect. Off with
+    `prefers-reduced-motion`.
+  - Pool = preallocated typed arrays, swap-remove on death, delta-time motion (drag via `exp(-k·dt)`): no
+    allocations per frame. When full, a new particle reuses an old slot (round-robin), so the newest effect shows.
+  - Effects, each with its own shape (colour-blind safe) and a dark rim: key glints while it waits + star burst and
+    rings on pick-up; per spell leaves (Ναπολέων) or ice diamonds (Αριάνα); rainbow stars for the Ίριδα; drops +
+    rings when Ζαφείρης dives into the sea (flight to Γοργονία) and where a Κύμα Νερού hits.
+  - The old enemy sparks, the snowstorm flakes, the water trail and the win fireworks now use the same pool
+    (before: object per particle, `filter()` every frame, cap 700).
+  - Test probe `/?e2e` gains `__mi.fx` (pool counters) and `__mi.burst`. New `tests/particles.spec.ts` (13 tests:
+    collect + drain to 0, every spell + Ίριδα, splash on the dive, cap, reduced motion = none, 1280 / 1180x820 /
+    820x1180 / 360 × light + dark with 0 console errors); all 13 fail on the previous `index.html`.
+  - README: «Οθόνες και ροή» §8 Εφέ, MI-26..MI-30, «Τι άλλαξε», «Γνωστοί περιορισμοί». Save key unchanged.
 - **README pass 02** (GAME-STANDARD v1.2 §2a): the README (Greek) is also the owner's manual-test guide. New
   sections «Οθόνες και ροή» (title with «Συνέχεια: <νησί> ▶», hero cards and swap, the 4 islands, flight, lose,
   win, pause), «Αποθήκευση», «Λίστα χειροκίνητων δοκιμών» MI-01..MI-25 (1280, 1180x820, 820x1180, 780x360, 360,
