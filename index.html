@@ -1030,11 +1030,13 @@ function updateHud(){
 
 /* ---------------- INPUT ---------------- */
 const keys=new Set();const touchV={x:0,y:0};
+const GAME_KEYS=['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'];
 const KMAP={Digit1:0,Digit2:1,Digit3:2,Digit4:3,Numpad1:0,Numpad2:1,Numpad3:2,Numpad4:3};
 addEventListener('keydown',e=>{
   const c=e.code;
-  if(G.state==='title'&&e.target&&e.target.tagName==='BUTTON'&&(c==='Enter'||c==='Space'||c==='NumpadEnter'))return; // homelab: native click
-  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','Tab'].includes(c))e.preventDefault();
+  const scr=e.target&&e.target.tagName==='BUTTON'&&e.target.closest('.screen');
+  if(scr&&!scr.hidden&&(c==='Enter'||c==='Space'||c==='NumpadEnter'))return; // homelab: native click on a visible screen button (MI-23)
+  if(GAME_KEYS.includes(c)||(c==='Tab'&&G.state==='play'))e.preventDefault(); // Tab is a game key only in play (MI-23)
   if(e.repeat&&!c.startsWith('Arrow'))return;
   keys.add(c);onKey(c);
 });
