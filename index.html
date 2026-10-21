@@ -241,6 +241,20 @@ body.touch .spell .ic{font-size:24px;}
 <script>
 (function(){
 'use strict';
+/* Settings (GAME-STANDARD §4): change them here. Particle effects are drawn with code from one fixed pool. */
+const CONFIG={
+  particles:{
+    enabled:true,  // false = no particle effects at all; prefers-reduced-motion also turns them off
+    max:250,       // pool size: never more particles at once (while it is full, a new one reuses an old slot)
+    collect:24,    // gold glints (4-point stars) + a ring when the key is picked up
+    keyTwinkle:5,  // glints per second around the key while it waits on the ground
+    ability:12,    // burst at the hero on every spell: Ναπολέων leaves, Αριάνα ice diamonds
+    iris:28,       // rainbow stars around both heroes for the Ίριδα
+    splash:26,     // water drops + rings when Ζαφείρης dives into the sea (flight to Γοργονία)
+    waterHit:7,    // drops where a Κύμα Νερού hits
+    firework:40    // sparks per firework on the win screen
+  }
+};
 const $=id=>document.getElementById(id);
 const cv=$('cv'), ctx=cv.getContext('2d');
 let W=0,H=0,DPR=1,ZOOM=1;
@@ -321,9 +335,120 @@ const HERO_DEF=[{id:'nap',name:'Ναπολέων',acc:'τον Ναπολέοντ
 
 /* ---------------- STATE ---------------- */
 const G={state:'title',island:0,keys:0,t:0,phase:'waves',wave:0,toSpawn:0,spawnT:0,waitT:0,
-  heroes:[],enemies:[],projs:[],parts:[],fx:[],zones:[],texts:[],props:[],unis:[],amb:[],
+  heroes:[],enemies:[],projs:[],fx:[],zones:[],texts:[],props:[],unis:[],amb:[],
   active:0,cam:{x:0,y:0},shake:0,flash:0,shieldT:0,irisUsed:false,boss:null,key:null,
-  banners:[],bannerT:0,ground:null,flight:null,fw:[],fwT:0,iris:{x:0,y:0},loseT:0,downHint:false};
+  banners:[],bannerT:0,ground:null,flight:null,fwT:0,iris:{x:0,y:0},loseT:0,downHint:false};
+
+/* ---------------- PARTICLES ---------------- */
+// One pool, allocated once (struct of arrays): spawning, updating and drawing never allocate. Live particles are
+// packed at 0..PN-1 and a dead one is replaced by the last. Shapes carry the meaning, not only the colour:
+// star = collect / Ίριδα, leaf = Ναπολέων, diamond = Αριάνα, drop + ring = water, dot = sparks of enemies.
+const P_DOT=0,P_STAR=1,P_RING=2,P_DROP=3,P_LEAF=4,P_DIAMOND=5;
+const PMAX=Math.max(0,CONFIG.particles.max|0);
+const PON=!!CONFIG.particles.enabled&&!reduceMotion&&PMAX>0;
+const px=new Float32Array(PMAX),py=new Float32Array(PMAX),pvx=new Float32Array(PMAX),pvy=new Float32Array(PMAX),
+  pg=new Float32Array(PMAX),pdrag=new Float32Array(PMAX),plife=new Float32Array(PMAX),pmax=new Float32Array(PMAX),
+  psize=new Float32Array(PMAX),prot=new Float32Array(PMAX),pspin=new Float32Array(PMAX),pshape=new Uint8Array(PMAX);
+const pcol=new Array(PMAX).fill('#ffffff');
+let PN=0,PSTEAL=0;
+// Counters for the test probe (/?e2e): particles spawned per effect, old slots reused while full, most alive at once.
+const PSTAT={spawned:{spark:0,twinkle:0,collect:0,ability:0,iris:0,splash:0,firework:0},reused:0,peak:0};
+const P_INK='rgba(20,10,50,.7)';
+const C_GOLD='#ffd45e',C_WHITE='#ffffff';
+const C_NAP=['#bfff9a','#ffe27a','#7fe06a'],C_ARI=['#cfeeff','#9ad9ff','#ffffff'];
+const C_RAINBOW=['#ff5a5a','#ff9a3c','#ffe14d','#6fdc6a','#4fb4ff','#6a6cff','#c06bff'];
+const C_WATER=['#8fdcff','#e6f7ff','#4fb4ff'];
+const C_FW=[];for(let i=0;i<12;i++)C_FW.push('hsl('+(i*30)+',95%,68%)');
+function partAdd(fx,shape,x,y,vx,vy,life,size,col,g,drag,spin){
+  if(!PON)return;
+  let i;
+  if(PN<PMAX)i=PN++;
+  else{i=PSTEAL;PSTEAL=(PSTEAL+1)%PMAX;PSTAT.reused++;} // full: the newest effect wins over an old spark
+  px[i]=x;py[i]=y;pvx[i]=vx;pvy[i]=vy;plife[i]=life;pmax[i]=life;psize[i]=size;pcol[i]=col;
+  pg[i]=g||0;pdrag[i]=drag||0;prot[i]=Math.random()*TAU;pspin[i]=spin||0;pshape[i]=shape;
+  PSTAT.spawned[fx]++;if(PN>PSTAT.peak)PSTAT.peak=PN;
+}
+function partsClear(){PN=0;}
+function partsUpdate(dt){
+  for(let i=0;i<PN;){
+    plife[i]-=dt;
+    if(plife[i]<=0){
+      const j=--PN;
+      if(i<j){px[i]=px[j];py[i]=py[j];pvx[i]=pvx[j];pvy[i]=pvy[j];pg[i]=pg[j];pdrag[i]=pdrag[j];plife[i]=plife[j];
+        pmax[i]=pmax[j];psize[i]=psize[j];prot[i]=prot[j];pspin[i]=pspin[j];pshape[i]=pshape[j];pcol[i]=pcol[j];}
+      continue;
+    }
+    if(pdrag[i]>0){const k=Math.exp(-pdrag[i]*dt);pvx[i]*=k;pvy[i]*=k;}
+    pvy[i]+=pg[i]*dt;px[i]+=pvx[i]*dt;py[i]+=pvy[i]*dt;prot[i]+=pspin[i]*dt;
+    i++;
+  }
+}
+function partsDraw(c){
+  if(!PN)return;
+  c.lineJoin='round';
+  for(let i=0;i<PN;i++){
+    const u=plife[i]/pmax[i],x=px[i],y=py[i],s=psize[i];
+    c.globalAlpha=u<1?u:1;
+    const sh=pshape[i];
+    if(sh===P_DOT){c.fillStyle=pcol[i];c.beginPath();c.arc(x,y,s,0,TAU);c.fill();continue;}
+    if(sh===P_RING){const r=s*(1.15-u);c.strokeStyle=pcol[i];c.lineWidth=1+4*u;c.beginPath();c.ellipse(x,y,r,r/1.6,0,0,TAU);c.stroke();continue;}
+    c.beginPath();
+    if(sh===P_STAR){
+      const ca=Math.cos(prot[i])*s,sa=Math.sin(prot[i])*s,m=0.24;
+      c.moveTo(x+ca,y+sa);c.lineTo(x+m*(ca-sa),y+m*(sa+ca));c.lineTo(x-sa,y+ca);c.lineTo(x-m*(sa+ca),y+m*(ca-sa));
+      c.lineTo(x-ca,y-sa);c.lineTo(x+m*(sa-ca),y-m*(sa+ca));c.lineTo(x+sa,y-ca);c.lineTo(x+m*(sa+ca),y+m*(sa-ca));
+      c.closePath();
+    }else if(sh===P_DIAMOND){
+      const ca=Math.cos(prot[i])*s,sa=Math.sin(prot[i])*s;
+      c.moveTo(x+ca,y+sa);c.lineTo(x-sa*0.55,y+ca*0.55);c.lineTo(x-ca,y-sa);c.lineTo(x+sa*0.55,y-ca*0.55);c.closePath();
+    }else if(sh===P_LEAF){
+      c.ellipse(x,y,s,s*0.45,prot[i],0,TAU);
+    }else{ // P_DROP, point up
+      c.moveTo(x,y-s*1.8);c.quadraticCurveTo(x+s*1.15,y-s*0.1,x,y+s);c.quadraticCurveTo(x-s*1.15,y-s*0.1,x,y-s*1.8);
+    }
+    c.fillStyle=pcol[i];c.fill();
+    c.strokeStyle=P_INK;c.lineWidth=1.2;c.stroke(); // dark rim: readable on the white snow and the pink island too
+  }
+  c.globalAlpha=1;
+}
+/* Effects (counts in CONFIG.particles) */
+function burst(x,y,col,n,vyBias){
+  for(let i=0;i<n;i++){const a=Math.random()*TAU,s=rand(40,200);
+    partAdd('spark',P_DOT,x,y,Math.cos(a)*s,Math.sin(a)*s*0.7+(vyBias||0),rand(0.4,0.9),rand(2,5),col,140,1.2,0);}
+}
+function fxCollect(x,y){
+  const n=CONFIG.particles.collect;
+  partAdd('collect',P_RING,x,y+30,0,0,0.6,90,C_GOLD,0,0,0);
+  partAdd('collect',P_RING,x,y+30,0,0,0.9,150,C_WHITE,0,0,0);
+  for(let i=0;i<n;i++){const a=i/n*TAU+rand(-0.2,0.2),s=rand(70,180);
+    partAdd('collect',P_STAR,x,y,Math.cos(a)*s,Math.sin(a)*s*0.7-70,rand(0.7,1.1),rand(6,10),i%3?C_GOLD:C_WHITE,90,1.6,rand(-4,4));}
+}
+function fxTwinkle(x,y){partAdd('twinkle',P_STAR,x+rand(-28,28),y+rand(-30,24),0,-24,0.55,rand(4,7),Math.random()<0.7?C_GOLD:C_WHITE,0,0,rand(-3,3));}
+function fxAbility(h){
+  const n=CONFIG.particles.ability,nap=h.id==='nap',cols=nap?C_NAP:C_ARI,sh=nap?P_LEAF:P_DIAMOND;
+  for(let i=0;i<n;i++){const a=i/n*TAU+rand(-0.25,0.25),s=rand(90,160);
+    partAdd('ability',sh,h.x+Math.cos(a)*14,h.y-40+Math.sin(a)*10,Math.cos(a)*s,Math.sin(a)*s*0.7-30,rand(0.45,0.75),rand(5,8),cols[i%3],nap?60:-20,2.2,rand(-5,5));}
+}
+function fxIris(){
+  const n=Math.ceil(CONFIG.particles.iris/2);
+  for(const h of G.heroes)for(let i=0;i<n;i++){const a=rand(-Math.PI,0),s=rand(80,200);
+    partAdd('iris',P_STAR,h.x+rand(-20,20),h.y-50,Math.cos(a)*s,Math.sin(a)*s,rand(0.8,1.3),rand(6,10),C_RAINBOW[i%7],120,1.4,rand(-4,4));}
+}
+function fxSplash(x,y,k){
+  const n=CONFIG.particles.splash;
+  partAdd('splash',P_RING,x,y,0,0,0.8,110*k,C_WHITE,0,0,0);
+  partAdd('splash',P_RING,x,y,0,0,1.1,190*k,C_WATER[0],0,0,0);
+  for(let i=0;i<n;i++)partAdd('splash',P_DROP,x+rand(-60,60)*k,y,rand(-170,170)*k,rand(-460,-200)*k,rand(0.7,1.1),rand(4,7)*k,C_WATER[i%3],800*k,0.4,0);
+}
+function fxWaterHit(x,y){
+  const n=CONFIG.particles.waterHit;
+  for(let i=0;i<n;i++)partAdd('splash',P_DROP,x,y,rand(-110,110),rand(-230,-90),rand(0.4,0.6),rand(3,5),C_WATER[i%3],600,0.6,0);
+}
+function fxFirework(x,y){
+  const n=CONFIG.particles.firework,hue=(Math.random()*12)|0;
+  for(let i=0;i<n;i++){const a=i/n*TAU,s=rand(90,220);
+    partAdd('firework',P_DOT,x,y,Math.cos(a)*s,Math.sin(a)*s,rand(0.9,1.5),2.6,C_FW[(hue+((Math.random()*3)|0)-1+12)%12],60,0.9,0);}
+}
 
 /* ---------------- AUDIO ---------------- */
 let AC=null,master=null,musicGain=null,muted=false,noiseBuf=null;
@@ -748,7 +873,7 @@ function makeHeroes(){
 }
 function startIsland(i){
   G.island=i;const I=ISL[i];
-  G.enemies=[];G.projs=[];G.parts=[];G.fx=[];G.zones=[];G.texts=[];G.key=null;G.boss=null;G.irisUsed=false;
+  G.enemies=[];G.projs=[];partsClear();G.fx=[];G.zones=[];G.texts=[];G.key=null;G.boss=null;G.irisUsed=false;
   G.wave=0;G.toSpawn=0;G.phase='waves';G.shieldT=0;G.banners=[];G.bannerT=0;G.shake=0;G.flash=0;G.downHint=false;
   makeHeroes();G.active=0;
   buildGround(I,i);G.props=makeProps(i);G.amb=makeAmb(i);
@@ -795,7 +920,7 @@ function bossDefeated(e){
 }
 function collectKey(){
   const I=ISL[G.island];
-  burst(G.key.x,G.key.y-36,'#ffd45e',40);
+  fxCollect(G.key.x,G.key.y-36);
   G.key=null;G.keys++;sfx('key');
   for(const h of G.heroes){h.down=false;h.hp=h.max;burst(h.x,h.y-40,'#9dffb0',20,-60);}
   updateKeys();G.phase='done';G.banners=[];$('banner').hidden=true;
@@ -814,7 +939,7 @@ function startFlight(to){
   setState('flight');
 }
 function startWin(){
-  G.fw=[];G.fwT=0;musicOn=false;sfx('fanfare');
+  partsClear();G.fwT=0;musicOn=false;sfx('fanfare');
   setState('win');
 }
 function lose(){
@@ -1039,20 +1164,19 @@ function cast(h,k,auto){
       burst(hx,hy-30,'#dff8ff',24);break;}
     case 'shield':{G.shieldT=sp.dur;G.fx.push({k:'ring',x:hx,y:hy,r0:10,r1:130,life:0.4,max:0.4,col:'#cfe4ff',w:6});break;}
   }
-  if(!auto)sfx(sp.sfx);
+  if(!auto){sfx(sp.sfx);fxAbility(h);}
   return true;
 }
 function useIris(){
   if(G.irisUsed){banner('Η Ίριδα ξεκουράζεται 🌈',1.3);return;}
   G.irisUsed=true;sfx('iris');
-  G.fx.push({k:'rainbow',life:1.6,max:1.6});G.flash=0.4;
+  G.fx.push({k:'rainbow',life:1.6,max:1.6});G.flash=0.4;fxIris();
   for(const h of G.heroes){if(h.down){h.down=false;h.hp=50;}else h.hp=Math.min(h.max,h.hp+50);addText(h.x,h.y-85,'+50','#9dff9a');burst(h.x,h.y-40,'#ffffff',20,-80);}
   const I=ISL[G.island];
   for(const e of G.enemies){if(e.dead||e.spawn>0)continue;if(e.boss)damage(e,e.max*I.boss.iris);else damage(e,30);}
   banner('Ουράνιο Τόξο της Ίριδας! 🌈',1.6);
 }
 function addText(x,y,txt,col){G.texts.push({x,y,txt:String(txt),col,life:0.9,max:0.9});if(G.texts.length>60)G.texts.shift();}
-function burst(x,y,col,n,vyBias){for(let i=0;i<n;i++){const a=Math.random()*TAU,s=rand(40,200);G.parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s*0.7+(vyBias||0),life:rand(0.4,0.9),max:0.9,col,size:rand(2,5),g:140});}if(G.parts.length>700)G.parts.splice(0,G.parts.length-700);}
 function damage(e,a,silent){
   if(e.dead)return;
   if(e.boss&&G.island===3&&!linked())a*=0.5;
@@ -1161,15 +1285,15 @@ function updatePlay(dt){
     z.t-=dt;
     for(const e of G.enemies){if(e.dead||e.spawn>0)continue;
       if(Math.hypot(e.x-z.x,(e.y-z.y)*1.6)<z.r+e.r){damage(e,z.dps*dt,true);e.slow=0.3;e.zt-=dt;if(e.zt<=0&&!e.dead){e.zt=0.6;addText(e.x,e.y-(e.boss?e.r*2.8:62),Math.round(z.dps*0.6),'#dff3ff');}}}
-    if(Math.random()<0.7){const a=Math.random()*TAU,r=Math.random()*z.r;G.parts.push({x:z.x+Math.cos(a)*r,y:z.y+Math.sin(a)*r/1.6-80,vx:rand(-30,30),vy:rand(60,120),life:0.7,max:0.7,col:'#ffffff',size:rand(2,4),g:0});}
+    if(Math.random()<0.7){const a=Math.random()*TAU,r=Math.random()*z.r;partAdd('spark',P_DOT,z.x+Math.cos(a)*r,z.y+Math.sin(a)*r/1.6-80,rand(-30,30),rand(60,120),0.7,rand(2,4),C_WHITE,0,0,0);}
   }
   G.zones=G.zones.filter(z=>z.t>0);
   // projectiles
   for(const p of G.projs){
     p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;
     if(p.from==='h'){
-      for(const e of G.enemies){if(e.dead||e.spawn>0)continue;if(Math.hypot(e.x-p.x,e.y-p.y)<e.r+p.r){damage(e,p.dmg);p.life=0;burst(p.x,p.y-38,'#8fdcff',8);break;}}
-      if(Math.random()<0.5)G.parts.push({x:p.x,y:p.y-38,vx:rand(-20,20),vy:rand(-20,20),life:0.35,max:0.35,col:'#9fe0ff',size:rand(2,4),g:60});
+      for(const e of G.enemies){if(e.dead||e.spawn>0)continue;if(Math.hypot(e.x-p.x,e.y-p.y)<e.r+p.r){damage(e,p.dmg);p.life=0;fxWaterHit(p.x,p.y-38);break;}}
+      if(Math.random()<0.5)partAdd('spark',P_DOT,p.x,p.y-38,rand(-20,20),rand(-20,20),0.35,rand(2,4),'#9fe0ff',60,1.2,0);
     }else{
       for(const h of G.heroes){if(h.down)continue;if(Math.hypot(h.x-p.x,h.y-p.y)<p.r+20){hurtHero(h,p.dmg);p.life=0;burst(p.x,p.y-38,'#ffffff',6);break;}}
     }
@@ -1180,6 +1304,7 @@ function updatePlay(dt){
   // key
   if(G.key&&G.phase==='key'){
     G.key.t+=dt;
+    if(CONFIG.particles.keyTwinkle>0){G.key.tw=(G.key.tw||0)-dt;if(G.key.tw<=0){G.key.tw=1/CONFIG.particles.keyTwinkle;fxTwinkle(G.key.x,G.key.y-36);}}
     for(const o of G.heroes){if(o.down)continue;const d=dist(o,G.key);
       if(d<230&&G.key.t>0.8){G.key.x+=(o.x-G.key.x)/d*260*dt;G.key.y+=(o.y-G.key.y)/d*260*dt;}
       if(d<55&&G.key.t>0.8){collectKey();break;}}
@@ -1190,8 +1315,7 @@ function updatePlay(dt){
   G.iris.x=lerp(G.iris.x,tgt.x-110,1-Math.exp(-dt*2));G.iris.y=lerp(G.iris.y,tgt.y-150,1-Math.exp(-dt*2));
 }
 function updateFx(dt){
-  for(const p of G.parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.g*dt;p.vx*=0.98;p.life-=dt;}
-  G.parts=G.parts.filter(p=>p.life>0);
+  partsUpdate(dt);
   for(const f of G.fx)f.life-=dt;G.fx=G.fx.filter(f=>f.life>0);
   for(const t of G.texts){t.y-=40*dt;t.life-=dt;}G.texts=G.texts.filter(t=>t.life>0);
 }
@@ -1267,8 +1391,7 @@ function drawFxAir(c){
     if(f.k==='beam'){c.save();c.lineCap='round';c.strokeStyle='rgba(255,226,110,'+(u*0.6).toFixed(3)+')';c.lineWidth=22*u+4;c.beginPath();c.moveTo(f.x1,f.y1);c.lineTo(f.x2,f.y2);c.stroke();c.strokeStyle='rgba(255,255,230,'+u.toFixed(3)+')';c.lineWidth=7*u+2;c.stroke();c.restore();}
     else if(f.k==='bolt'){c.save();c.lineJoin='round';c.strokeStyle='rgba(255,250,170,'+u.toFixed(3)+')';c.lineWidth=7;c.beginPath();f.pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();c.strokeStyle='rgba(255,255,255,'+u.toFixed(3)+')';c.lineWidth=2.5;c.stroke();c.restore();}
   }
-  for(const p of G.parts){c.globalAlpha=clamp(p.life/p.max,0,1);c.fillStyle=p.col;c.beginPath();c.arc(p.x,p.y,p.size,0,TAU);c.fill();}
-  c.globalAlpha=1;
+  partsDraw(c);
   c.font='bold 22px Comfortaa,sans-serif';c.textAlign='center';c.lineWidth=4;c.strokeStyle='rgba(20,10,40,.85)';
   for(const t of G.texts){c.globalAlpha=clamp(t.life/t.max*1.5,0,1);c.strokeText(t.txt,t.x,t.y);c.fillStyle=t.col;c.fillText(t.txt,t.x,t.y);}
   c.globalAlpha=1;c.textAlign='left';
@@ -1346,19 +1469,19 @@ function renderFlight(){
   if(I.underwater&&p>0.45){const q=clamp((p-0.45)/0.3,0,1);dy=lerp(dy,seaY+H*0.12,q);if(p>0.7)waterY=lerp(seaY,-20,clamp((p-0.7)/0.2,0,1));}
   drawSea(waterY,t,'#2f8fc4','#0f3f6e');
   drawDragon(ctx,dx,dy,s,t,true);
+  if(I.underwater&&!f.splashed&&dy>waterY){f.splashed=true;fxSplash(dx,waterY,s);} // the dive into the sea
   if(dy>waterY){ctx.fillStyle='rgba(20,110,190,.35)';ctx.fillRect(0,waterY,W,H-waterY);ctx.strokeStyle='rgba(230,248,255,.6)';ctx.lineWidth=2;for(let i=0;i<14;i++){const bx=(i*97+t*20)%W,by=H-((t*90+i*61)%(H-Math.max(0,waterY)));ctx.beginPath();ctx.arc(bx,by,3+(i%3)*2,0,TAU);ctx.stroke();}}
   if(I.underwater&&p>0.6){ctx.fillStyle=I.g1;ell(ctx,lerp(W*1.1,W*0.75,(p-0.6)/0.4),H*0.92,iw*1.2,30);}
+  partsDraw(ctx);
 }
 function renderWin(dt){
   const t=G.t;
   const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#120c35');g.addColorStop(1,'#5b2f8f');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
   for(let i=0;i<70;i++){const x=(i*137.5)%W,y=(i*71.3)%(H*0.7);ctx.fillStyle='rgba(255,255,255,'+(0.3+Math.sin(t*2+i)*0.3).toFixed(2)+')';ctx.fillRect(x,y,2,2);}
   G.fwT-=dt;
-  if(G.fwT<=0){G.fwT=rand(0.35,0.75);const x=rand(W*0.1,W*0.9),y=rand(H*0.08,H*0.42),hue=rand(0,360);
-    for(let i=0;i<46;i++){const a=i/46*TAU,s=rand(90,220);G.fw.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(0.9,1.5),max:1.5,col:'hsl('+((hue+rand(-20,20))|0)+',95%,68%)'});}
+  if(G.fwT<=0){G.fwT=rand(0.35,0.75);fxFirework(rand(W*0.1,W*0.9),rand(H*0.08,H*0.42));
     sfx('boom');if(Math.random()<0.6)setTimeout(()=>sfx('crackle'),250);}
-  for(const p of G.fw){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=60*dt;p.vx*=0.985;p.life-=dt;ctx.globalAlpha=clamp(p.life/p.max,0,1);ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,2.6,0,TAU);ctx.fill();}
-  ctx.globalAlpha=1;G.fw=G.fw.filter(p=>p.life>0);
+  partsUpdate(dt);partsDraw(ctx);
   const gy=H*0.86;ctx.fillStyle='#3e7a46';ctx.beginPath();ctx.ellipse(W/2,gy+H*0.2,W*0.75,H*0.24,0,0,TAU);ctx.fill();
   const s=clamp(W/1100,0.5,1.1);
   drawIris(ctx,W/2,gy-200*s+Math.sin(t*1.5)*6,1.4*s,t);
@@ -1379,7 +1502,7 @@ function frame(now){
   const s=G.state;
   if(s==='title'){renderTitle();}
   else if(s==='flight'){
-    G.flight.t+=dt;renderFlight();
+    G.flight.t+=dt;partsUpdate(dt);renderFlight();
     if(G.flight.t>=G.flight.dur&&!G.flight.done){G.flight.done=true;startIsland(G.flight.to);}
   }
   else if(s==='win'){renderWin(dt);}
@@ -1396,7 +1519,8 @@ function frame(now){
 setState('title');
 requestAnimationFrame(frame);
 // Test probe (Playwright only): /?e2e exposes the game state read-only by reference; normal play never sets it.
-if(new URLSearchParams(location.search).has('e2e'))window.__mi={get G(){return G;},get touchV(){return touchV;}};
+if(new URLSearchParams(location.search).has('e2e'))window.__mi={get G(){return G;},get touchV(){return touchV;},
+  get fx(){return {on:PON,max:PMAX,active:PN,peak:PSTAT.peak,reused:PSTAT.reused,spawned:Object.assign({},PSTAT.spawned)};},burst};
 })();
 </script>
 </body>
