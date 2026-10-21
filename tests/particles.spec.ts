@@ -119,13 +119,15 @@ test('water: Ζαφείρης splashes into the sea on the flight to Γοργο�
 test('cap: the pool never holds more than CONFIG.particles.max', async ({ page }) => {
   const problems = await watch(page);
   await toPlay(page);
-  await page.evaluate(() => {
+  // Counters read in the same synchronous step as the bursts, so sparks already alive (e.g. a minion spawn) count.
+  const [before, f] = await page.evaluate(() => {
+    const b = window.__mi.fx;
     for (let i = 0; i < 40; i++) window.__mi.burst(0, 0, '#ffffff', 20);
+    return [b, window.__mi.fx];
   });
-  const f = await fx(page);
   expect(f.active).toBe(f.max);
   expect(f.peak).toBe(f.max);
-  expect(f.reused).toBe(800 - f.max);
+  expect(f.reused - before.reused).toBe(800 - (f.max - before.active));
   // Informative only (CI machines differ): mean frame time with a full pool.
   const ms = await page.evaluate(
     () =>
