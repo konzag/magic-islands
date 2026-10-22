@@ -1,6 +1,12 @@
 # Changelog
 
 ## Unreleased
+- **MI-RETRY / MAGIC-ISLANDS-T1** (PR #29, owner decision 11 of 2026-10-22): after a loss, «Ξανά από την αρχή 🐉»
+  restarts the same island and keeps the keys earned so far (GAME-STANDARD §6, no punishing loss). Before, it always
+  went back to Μονοκέρια with 0 keys. The lose card text now says so instead of promising Μονοκέρια. Save key and
+  v1 format unchanged; graphics unchanged.
+  - Tests: the T1 test in `tests/flow.spec.ts` passes instead of `test.fail` (and fails on the old code); a new test
+    covers a loss on the first island (Μονοκέρια, 0 keys, nothing saved). Test-count floor 180 → 182 (181 listed before + 1).
 - **G1-GFX-2026-10-22** (PR #25): a clearly better look with the same gameplay, controls, difficulty, texts, save key and
   save format, and a much cheaper frame.
   - **Frame:** the pre-rendered island is built at the screen's own scale and copied 1:1 at whole pixels. Before,

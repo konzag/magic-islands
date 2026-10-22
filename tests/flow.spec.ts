@@ -25,8 +25,8 @@ test.describe('losing (desktop)', () => {
     expect(problems).toEqual([]);
   });
 
+  // MAGIC-ISLANDS-T1, owner decision 11 (2026-10-22): «Ξανά από την αρχή 🐉» restarts THE SAME island, keys kept.
   test('losing restarts the same island and keeps the keys', async ({ page }) => {
-    test.fail(true, 'APP BUG MAGIC-ISLANDS-T1: «Ξανά από την αρχή» (restart) goes back to island 0 with 0 keys; GAME-STANDARD §6 wants a safe point that keeps what was unlocked (owner decision: README MI-12 documents the restart from Μονοκέρια)');
     const problems = await watch(page);
     await seedSave(page, JSON.stringify({ v: 1, island: 2, keys: 2 }));
     await page.goto('/?e2e');
@@ -34,11 +34,29 @@ test.describe('losing (desktop)', () => {
     await advanceTo(page, 'play');
     expect(await G<number>(page, 'keys')).toBe(2);
     await forceLoss(page);
+    await expect(page.locator('#lose')).not.toContainText('Μονοκέρια'); // the card no longer promises island 0
     await page.locator('#retry-btn').click();
     await expect.poll(() => state(page)).toBe('dialog');
-    expect(problems).toEqual([]);
-    // the bug: both of these are 0 today
     expect({ island: await G<number>(page, 'island'), keys: await G<number>(page, 'keys') }).toEqual({ island: 2, keys: 2 });
+    await expect(page.locator('#isl-name')).toHaveText('Κρυσταλία');
+    await expect(page.locator('#keys span.got')).toHaveCount(2);
+    expect(JSON.parse((await stored(page))!)).toStrictEqual({ v: 1, island: 2, keys: 2 }); // save key + v1 format unchanged
+    expect(problems).toEqual([]);
+  });
+
+  test('losing on the first island restarts Μονοκέρια with no keys', async ({ page }) => {
+    const problems = await watch(page);
+    await seedSave(page, null);
+    await page.goto('/?e2e');
+    await page.locator('#start-btn').click();
+    await advanceTo(page, 'play');
+    await forceLoss(page);
+    await page.locator('#retry-btn').click();
+    await expect.poll(() => state(page)).toBe('dialog');
+    expect({ island: await G<number>(page, 'island'), keys: await G<number>(page, 'keys') }).toEqual({ island: 0, keys: 0 });
+    await expect(page.locator('#isl-name')).toHaveText('Μονοκέρια');
+    expect(await stored(page)).toBeNull(); // nothing was unlocked, so nothing is saved
+    expect(problems).toEqual([]);
   });
 });
 
