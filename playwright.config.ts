@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
+// PW_PORT: another port for the stand-in hub when 4173 is taken on this machine (default 4173, as in CI).
+const port = Number(process.env.PW_PORT || 4173);
+
 // Chromium projects: a desktop with keyboard, a landscape tablet with touch (GAME-STANDARD §3, §7), and for the
 // joystick spec also a landscape phone and a portrait tablet.
 export default defineConfig({
@@ -9,10 +12,11 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: 0,
   reporter: process.env.CI ? [['list'], ['github']] : 'list',
-  use: { baseURL: 'http://127.0.0.1:4173', browserName: 'chromium' },
+  use: { baseURL: `http://127.0.0.1:${port}`, browserName: 'chromium' },
   webServer: {
     command: 'node tests/serve.mjs',
-    url: 'http://127.0.0.1:4173/',
+    env: { PORT: String(port) },
+    url: `http://127.0.0.1:${port}/`,
     reuseExistingServer: !process.env.CI,
   },
   projects: [
