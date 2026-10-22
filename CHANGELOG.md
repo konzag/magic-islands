@@ -1,6 +1,18 @@
 # Changelog
 
 ## Unreleased
+- **T4 light + dark** (port of games-template d1aa5fc T4, GAME-STANDARD §3a): the cards, menus, buttons, HUD and
+  dialog follow `prefers-color-scheme` through `:root[data-theme]` (new CSS variables; the light palette keeps
+  WCAG AA, axe 0 serious in both). New 🌓 switch (`.theme-btn`, 52 px) on the title and pause cards: device → light →
+  dark → device. The choice is stored under its own key `magic-islands.theme.v1` (`'auto' | 'light' | 'dark'`),
+  written only when the switch is pressed; a bad value falls back to the device setting. The progress key
+  `magic-islands.progress.v1` and its value `{v:1,island:N,keys:N}` are untouched. The canvas world keeps its colours.
+  Not in the HUD: at 360 px a fifth HUD button does not fit.
+  - Tests: new `tests/theme.spec.ts` (follows the emulated scheme on title + pause, the switch cycle + reload + pause
+    switch + live device change + progress value unchanged, bad stored value, axe on the title at 360 light/dark),
+    all red on the old code. New `tests/layout.spec.ts`: T2 check, HUD at 360x740 / 360x780 fits while playing and
+    paused (passes as is, so the HUD is unchanged). `playwright.config.ts` takes `PW_PORT` like kryfes-maches.
+    Test-count floor 182 → 200.
 - **MI-RETRY / MAGIC-ISLANDS-T1** (PR #29, owner decision 11 of 2026-10-22): after a loss, «Ξανά από την αρχή 🐉»
   restarts the same island and keeps the keys earned so far (GAME-STANDARD §6, no punishing loss). Before, it always
   went back to Μονοκέρια with 0 keys. The lose card text now says so instead of promising Μονοκέρια. Save key and
