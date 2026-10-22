@@ -1,7 +1,7 @@
 # Changelog
 
 ## Unreleased
-- **G1-GFX-2026-10-22**: a clearly better look with the same gameplay, controls, difficulty, texts, save key and
+- **G1-GFX-2026-10-22** (PR #25): a clearly better look with the same gameplay, controls, difficulty, texts, save key and
   save format, and a much cheaper frame.
   - **Frame:** the pre-rendered island is built at the screen's own scale and copied 1:1 at whole pixels. Before,
     it was a scaled copy every frame, about 20 ms of a 1180x820 frame.
