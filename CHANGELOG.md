@@ -1,6 +1,46 @@
 # Changelog
 
 ## Unreleased
+- **G1-GFX-2026-10-22** (PR #25): a clearly better look with the same gameplay, controls, difficulty, texts, save key and
+  save format, and a much cheaper frame.
+  - **Frame:** the pre-rendered island is built at the screen's own scale and copied 1:1 at whole pixels. Before,
+    it was a scaled copy every frame, about 20 ms of a 1180x820 frame.
+    - At 1x: 59 fps instead of 37-39; script time per frame 8 ms instead of 21 ms.
+    - At 4x CPU: 14-17 fps instead of 6-7.
+    - Spirit auras, glow plants, the key and the water/magic orbs are pre-rendered glow sprites instead of
+      per-frame gradients; backgrounds and the title sky are cached per island and size.
+  - **Backgrounds per island:** far layers with 0.08x parallax:
+    - Μονοκέρια: islets and sea glints;
+    - Γοργονία: kelp;
+    - Κρυσταλία: snowy peaks and stars;
+    - Αγάπη: storybook cloud sprites and heart islets.
+  - **Under and around the island:** foam at the cliff foot (Μονοκέρια), cloud skirts under the sky islands, and a
+    rim light baked into the island.
+  - **Characters:**
+    - spirits blink and squash/stretch softly with their bob;
+    - Ίριδα blinks;
+    - enemies get cute round eyes with a soft brow, blush, a blink and a thin ink outline;
+    - bosses get softer brows and rosy cheeks.
+  - **Dialog:** a storybook bubble with a ringed round portrait (rainbow for Ίριδα, rose for a boss), a name tag, an
+    inner bubble with a tail, and a live portrait redrawn every frame.
+  - **HUD:** emoji with a dark outline; collected keys glow.
+  - **Screens:**
+    - an animated title logo (float, light sweep, sparkles);
+    - the title gets a moon with a glow, two cloud layers with parallax, sea glints and a shooting star;
+    - the flight gets clouds at three depths and a sun glow;
+    - the win gets a moon and hills;
+    - cards pop and the dialog slides up (transform only);
+    - a 0.35 s canvas fade into each new island, the flight, the win and the title.
+  - **Reduced motion:** no ambient particles (fireflies, bubbles, snow, hearts), no parallax, static backgrounds, a
+    still logo and a still portrait. The particle pool and its cap (250) are unchanged.
+  - **Probe and tests:**
+    - the test probe `/?e2e` gains `__mi.gfx`;
+    - new `tests/look.spec.ts`: every screen at 4 sizes x light/dark with 0 console errors and axe 0 serious, the
+      layers, parallax, reduced motion, the live portrait, the particle cap and the old save format. 4 of its tests
+      fail on the old code; the screen and save guards pass on both.
+    - `tests/perf.spec.ts` (PERF=1) and `tests/evidence.spec.ts` (EVIDENCE=dir) are not in CI.
+  - **README:** «Τι άλλαξε» with before/after images in `docs/screens/gfx/`, and MI-31..MI-37 for the family
+    tablet test.
 - **Particle effects** (G1-MI-PARTICLES, PR #20): one pooled particle system drawn with code on the canvas.
   - `CONFIG.particles` at the top of the script: `enabled`, `max` (250) and a count per effect. Off with
     `prefers-reduced-motion`.
