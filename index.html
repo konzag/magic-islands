@@ -10,7 +10,8 @@
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
 <style>
-/* Layout: full-bleed canvas game; HUD floats at the edges, dialogs dock at the bottom like a storybook caption. Single committed night look. */
+/* Layout: full-bleed canvas game; HUD floats at the edges, dialogs dock at the bottom like a storybook caption. Night look by default;
+   the menus, cards and buttons also have a light look (GAME-STANDARD §3a), the canvas world keeps its colours. */
 :root{
   --night:#140e2e;
   --panel:rgba(22,15,52,.86);
@@ -25,7 +26,40 @@
   --rose:#ff7aa8;
   --danger:#ff5d7d;
   --font:'Comfortaa','Trebuchet MS','Segoe UI',system-ui,sans-serif;
+  --soft:rgba(255,255,255,.12);
+  --soft-line:rgba(255,255,255,.2);
+  --bubble:rgba(255,255,255,.07);
+  --head:var(--gold);
+  --key-ink:var(--gold);
+  --boss-ink:#ffb3c4;
+  --chip-nap:var(--spring);
+  --chip-ari:var(--winter);
+  --chip-dr:#8ff0e6;
+  --win-card:rgba(22,15,52,.72);
+  --logo:linear-gradient(100deg,var(--spring) 0%,var(--gold) 45%,var(--winter) 100%);
+  --logo-shine:linear-gradient(100deg,var(--spring) 0%,var(--gold) 22%,#fff6d0 30%,var(--gold) 38%,var(--winter) 60%,var(--spring) 100%);
   color-scheme:dark;
+}
+/* homelab: light look. data-theme is set by the script: the device setting (prefers-color-scheme) or the 🌓 switch. */
+:root[data-theme="light"]{
+  --night:#e9e6fb;
+  --panel:rgba(255,255,255,.93);
+  --panel-edge:rgba(92,70,180,.45);
+  --ink:#1f1640;
+  --ink-dim:#4a3f6e;
+  --soft:rgba(31,22,64,.08);
+  --soft-line:rgba(31,22,64,.25);
+  --bubble:rgba(31,22,64,.06);
+  --head:#7a4e00;
+  --key-ink:#7a4e00;
+  --boss-ink:#a3123a;
+  --chip-nap:#1d6630;
+  --chip-ari:#1d58a6;
+  --chip-dr:#0b6259;
+  --win-card:rgba(255,255,255,.86);
+  --logo:linear-gradient(100deg,#23803a 0%,#9a6400 45%,#2a5fc0 100%);
+  --logo-shine:linear-gradient(100deg,#23803a 0%,#9a6400 22%,#c98a12 30%,#9a6400 38%,#2a5fc0 60%,#23803a 100%);
+  color-scheme:light;
 }
 html,body{height:100%;margin:0;overflow:hidden;background:var(--night);color:var(--ink);font-family:var(--font);}
 body{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
@@ -46,7 +80,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px;}
 .hero-card.nap.active{border-color:var(--spring);}
 .hero-card.ari.active{border-color:var(--winter);}
 .hero-card.down{opacity:.55;}
-.bar{display:block;height:12px;border-radius:6px;background:rgba(255,255,255,.14);overflow:hidden;}
+.bar{display:block;height:12px;border-radius:6px;background:var(--soft);overflow:hidden;}
 .bar i{display:block;height:100%;width:100%;transition:width .2s;}
 .nap .bar i{background:linear-gradient(90deg,var(--spring-deep),var(--spring));}
 .ari .bar i{background:linear-gradient(90deg,var(--winter-deep),var(--winter));}
@@ -56,7 +90,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px;}
 #bossbar{margin-top:6px;width:min(260px,40vw);}
 #bossbar .bar{height:14px;}
 #bossbar .bar i{background:linear-gradient(90deg,#b0244a,var(--danger));}
-#boss-name{display:block;font-size:14px;font-weight:700;color:#ffb3c4;margin-bottom:4px;}
+#boss-name{display:block;font-size:14px;font-weight:700;color:var(--boss-ink);margin-bottom:4px;}
 .right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
 #keys{display:flex;gap:4px;padding:6px 8px;border-radius:12px;background:var(--panel);}
 #keys span{width:26px;height:26px;display:grid;place-items:center;font-size:18px;filter:grayscale(1) brightness(.5) drop-shadow(0 0 1px #140e2e);opacity:.6;}
@@ -77,7 +111,7 @@ a.icon-btn{text-decoration:none;color:inherit;}
 .spell{position:relative;width:68px;height:68px;border-radius:18px;background:var(--panel);border:2px solid var(--panel-edge);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;overflow:hidden;touch-action:none;}
 .spell .ic{font-size:30px;line-height:1;position:relative;z-index:1;}
 .spell .nm{font-size:10px;line-height:1.1;text-align:center;padding:0 4px;position:relative;z-index:1;color:var(--ink-dim);}
-.spell .key{position:absolute;top:4px;left:7px;font-size:12px;font-weight:700;color:var(--gold);z-index:1;}
+.spell .key{position:absolute;top:4px;left:7px;font-size:12px;font-weight:700;color:var(--key-ink);z-index:1;}
 .spell::after{content:"";position:absolute;inset:0;background:conic-gradient(rgba(8,4,22,.78) calc(var(--cd,0) * 360deg),transparent 0);}
 .spell.ready.nap{border-color:var(--spring);box-shadow:0 0 14px rgba(142,227,111,.35);}
 .spell.ready.ari{border-color:var(--winter);box-shadow:0 0 14px rgba(154,217,255,.35);}
@@ -106,8 +140,8 @@ body.touch .spell .ic{font-size:24px;}
 #dialog[data-who="iris"] #portrait{box-shadow:0 0 0 3px var(--night),0 0 0 6px transparent,0 6px 18px rgba(0,0,0,.4);
   background:radial-gradient(circle at 50% 40%,rgba(255,255,255,.2),rgba(255,255,255,.04)) padding-box,conic-gradient(#ff5a5a,#ffe14d,#6fdc6a,#4fb4ff,#c06bff,#ff5a5a) border-box;border:4px solid transparent;}
 #dialog[data-who="boss"] #portrait{box-shadow:0 0 0 3px var(--night),0 0 0 6px var(--danger),0 6px 18px rgba(0,0,0,.4);}
-.dlg-body{flex:1;min-width:0;position:relative;background:rgba(255,255,255,.07);border-radius:18px;padding:10px 16px 12px;}
-.dlg-body::before{content:"";position:absolute;left:-11px;top:50%;margin-top:-10px;border:10px solid transparent;border-left:0;border-right:11px solid rgba(255,255,255,.07);}
+.dlg-body{flex:1;min-width:0;position:relative;background:var(--bubble);border-radius:18px;padding:10px 16px 12px;}
+.dlg-body::before{content:"";position:absolute;left:-11px;top:50%;margin-top:-10px;border:10px solid transparent;border-left:0;border-right:11px solid var(--bubble);}
 #dlg-who{display:inline-block;font-size:14px;font-weight:700;color:#2a1840;background:var(--gold);letter-spacing:.08em;margin:0 0 6px;padding:3px 10px;border-radius:999px;}
 #dialog[data-who="boss"] #dlg-who{color:#2a0a14;background:#ffb3c4;}
 #dlg-text{font-size:clamp(20px,3vw,30px);line-height:1.35;font-weight:700;text-wrap:balance;}
@@ -116,21 +150,21 @@ body.touch .spell .ic{font-size:24px;}
 /* Screens */
 .screen{position:absolute;inset:0;display:grid;place-items:center;padding:16px;padding-block:calc(env(safe-area-inset-top,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 16px);overflow:auto;}
 .card{width:min(640px,100%);background:var(--panel);border:2px solid var(--panel-edge);border-radius:28px;padding:28px;display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 60px rgba(0,0,0,.45);}
-.card h1{margin:0;font-size:clamp(38px,8vw,68px);line-height:1.05;text-wrap:balance;background:linear-gradient(100deg,var(--spring) 0%,var(--gold) 45%,var(--winter) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;}
-.card h2{margin:0;font-size:clamp(28px,5.5vw,44px);line-height:1.1;text-wrap:balance;color:var(--gold);}
+.card h1{margin:0;font-size:clamp(38px,8vw,68px);line-height:1.05;text-wrap:balance;background:var(--logo);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.card h2{margin:0;font-size:clamp(28px,5.5vw,44px);line-height:1.1;text-wrap:balance;color:var(--head);}
 .card p{margin:0;font-size:clamp(18px,2.6vw,22px);line-height:1.5;}
 .duo{display:flex;flex-wrap:wrap;gap:10px;}
 .chip{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;font-weight:700;font-size:16px;}
-.chip.nap{background:rgba(142,227,111,.16);color:var(--spring);}
-.chip.ari{background:rgba(154,217,255,.16);color:var(--winter);}
-.chip.dr{background:rgba(80,200,200,.16);color:#8ff0e6;}
+.chip.nap{background:rgba(142,227,111,.16);color:var(--chip-nap);}
+.chip.ari{background:rgba(154,217,255,.16);color:var(--chip-ari);}
+.chip.dr{background:rgba(80,200,200,.16);color:var(--chip-dr);}
 .controls{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;font-size:16px;align-items:center;color:var(--ink-dim);}
-.controls kbd{font-family:inherit;font-weight:700;color:var(--ink);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-bottom-width:3px;border-radius:8px;padding:3px 9px;white-space:nowrap;justify-self:start;}
+.controls kbd{font-family:inherit;font-weight:700;color:var(--ink);background:var(--soft);border:1px solid var(--soft-line);border-bottom-width:3px;border-radius:8px;padding:3px 9px;white-space:nowrap;justify-self:start;}
 .big-btn{align-self:flex-start;padding:16px 34px;border-radius:999px;background:var(--gold);color:#2a1840;font-size:24px;font-weight:700;box-shadow:0 6px 0 #b8861f;transition:transform .1s;}
 .big-btn:active{transform:translateY(4px);box-shadow:0 2px 0 #b8861f;}
 #flight-text{position:absolute;left:16px;right:16px;top:calc(env(safe-area-inset-top,0px) + 12%);text-align:center;font-size:clamp(26px,5vw,48px);font-weight:700;color:#fff;text-shadow:0 3px 0 rgba(20,10,50,.7),0 0 20px rgba(0,0,0,.4);text-wrap:balance;pointer-events:none;}
 #flight-skip{position:absolute;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);padding:10px 18px;border-radius:999px;background:var(--panel);font-size:16px;font-weight:700;}
-#win .card{background:rgba(22,15,52,.72);}
+#win .card{background:var(--win-card);}
 @media (max-width:680px){
   .heroes{flex-direction:column;gap:6px;}
   .hero-card{min-width:118px;padding:6px 10px;}
@@ -145,7 +179,7 @@ body.touch .spell .ic{font-size:24px;}
 }
 /* G1-GFX: animated logo (a slow float, a light that sweeps the gradient, two twinkling sparkles) and short transitions:
    the cards pop and the dialog slides up (transform only, so the text keeps full contrast from the first frame) */
-.card h1.logo{position:relative;background-size:220% 100%;background-image:linear-gradient(100deg,var(--spring) 0%,var(--gold) 22%,#fff6d0 30%,var(--gold) 38%,var(--winter) 60%,var(--spring) 100%);
+.card h1.logo{position:relative;background-size:220% 100%;background-image:var(--logo-shine);
   animation:logoFloat 4s ease-in-out infinite,logoShine 6s linear infinite;}
 .logo .spk{position:absolute;font-size:.36em;color:#fff7b0;-webkit-text-fill-color:#fff7b0;text-shadow:0 0 10px #ffd45e;animation:spk 2.6s ease-in-out infinite;}
 .logo .spk.a{left:-.2em;top:-.25em}.logo .spk.b{right:.1em;top:.1em;animation-delay:1.3s}
@@ -161,6 +195,8 @@ body.touch .spell .ic{font-size:24px;}
 .btn-row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;}
 .big-btn.alt{background:var(--winter);box-shadow:0 6px 0 var(--winter-deep);}
 .big-btn.alt:active{box-shadow:0 2px 0 var(--winter-deep);}
+/* homelab: the 🌓 switch (device / light / dark) on the title and pause cards; ≥ 44 px like every shell button target */
+.icon-btn.theme-btn{width:52px;height:52px;font-size:24px;}
 /* homelab: the hidden attribute must win over .screen{display:grid} (overlays blocked clicks) */
 [hidden]{display:none!important;}
 </style>
@@ -226,6 +262,7 @@ body.touch .spell .ic{font-size:24px;}
       <div class="btn-row">
         <button class="big-btn alt" id="continue-btn" hidden>Συνέχεια ▶</button>
         <button class="big-btn" id="start-btn">Ξεκινάμε! ✨</button>
+        <button class="icon-btn theme-btn" id="theme-btn" aria-label="Χρώματα: όπως η συσκευή">🌓</button>
       </div>
       <a class="home-link" href="/">🏠 Πίσω στα παιχνίδια</a>
     </div>
@@ -254,7 +291,10 @@ body.touch .spell .ic{font-size:24px;}
     <div class="card">
       <h2>Παύση</h2>
       <p>Πάρτε μια ανάσα. Ο Ζαφείρης περιμένει!</p>
-      <button class="big-btn" id="resume-btn">Συνέχεια ▶</button>
+      <div class="btn-row">
+        <button class="big-btn" id="resume-btn">Συνέχεια ▶</button>
+        <button class="icon-btn theme-btn" id="theme-btn-pause" aria-label="Χρώματα: όπως η συσκευή">🌓</button>
+      </div>
       <a class="home-link" href="/">🏠 Πίσω στα παιχνίδια</a>
     </div>
   </section>
@@ -1011,6 +1051,24 @@ const SAVE_KEY='magic-islands.progress.v1';
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(s&&Number.isInteger(s.island)&&s.island>0&&s.island<ISL.length)return s;}catch(e){}return null;}
 function saveProgress(i){const s=loadSave();if(s&&s.island>=i)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,island:i,keys:i}));}catch(e){}}
 function clearSave(){try{localStorage.removeItem(SAVE_KEY);}catch(e){}}
+/* homelab: light / dark look of the menus, cards and buttons (GAME-STANDARD §3a). 'auto' follows the device, the 🌓
+   switch goes auto → light → dark. Its own key: the progress key above and its value never change. Nothing is
+   written until the switch is pressed. */
+const THEME_KEY='magic-islands.theme.v1',THEMES=['auto','light','dark'];
+const Theme={
+  mqDark:matchMedia('(prefers-color-scheme: dark)'),
+  pick:'auto',
+  icons:{auto:'🌓',light:'☀️',dark:'🌙'},
+  labels:{auto:'Χρώματα: όπως η συσκευή',light:'Χρώματα: φωτεινά',dark:'Χρώματα: σκοτεινά'},
+  load(){try{const t=localStorage.getItem(THEME_KEY);if(THEMES.includes(t))this.pick=t;}catch(e){}},
+  apply(){
+    document.documentElement.dataset.theme=this.pick==='auto'?(this.mqDark.matches?'dark':'light'):this.pick;
+    for(const b of document.querySelectorAll('.theme-btn')){b.textContent=this.icons[this.pick];b.setAttribute('aria-label',this.labels[this.pick]);}
+  },
+  next(){this.pick=THEMES[(THEMES.indexOf(this.pick)+1)%THEMES.length];try{localStorage.setItem(THEME_KEY,this.pick);}catch(e){}this.apply();}
+};
+Theme.load();Theme.apply();
+Theme.mqDark.addEventListener('change',()=>Theme.apply());
 function continueGame(){const s=loadSave();if(!s){startGame();return;}initAudio();G.keys=s.island;startIsland(s.island);}
 function updateContinue(){const s=loadSave(),b=$('continue-btn');b.hidden=!s;if(s)b.textContent='Συνέχεια: '+ISL[s.island].name+' ▶';}
 
@@ -1175,6 +1233,7 @@ $('continue-btn').addEventListener('click',continueGame);
 $('retry-btn').addEventListener('click',restart);
 $('again-btn').addEventListener('click',toTitle);
 $('resume-btn').addEventListener('click',resumeGame);
+for(const b of document.querySelectorAll('.theme-btn'))b.addEventListener('click',()=>Theme.next());
 $('pause-btn').addEventListener('pointerdown',e=>{e.preventDefault();if(G.state==='play')pauseGame();});
 $('snd').addEventListener('pointerdown',e=>{e.preventDefault();initAudio();setMuted(!muted);});
 function toggleFull(){const d=document,el=d.documentElement;try{const p=(d.fullscreenElement||d.webkitFullscreenElement)?(d.exitFullscreen||d.webkitExitFullscreen).call(d):(el.requestFullscreen||el.webkitRequestFullscreen).call(el);if(p&&p.catch)p.catch(()=>{});}catch(e){}}
