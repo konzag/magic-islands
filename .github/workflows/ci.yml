@@ -27,6 +27,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2 # coverage-floor-check compares with the parent / base commit
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
@@ -35,6 +37,11 @@ jobs:
         run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      # TEST-STANDARD v1 §R-JS: no logic module, so the floor in .coverage-floor is the Playwright test count; it only goes up.
+      - name: Coverage floor not lowered
+        run: bash tools/coverage-floor-check.sh
+      - name: Test count >= floor
+        run: bash tools/test-count-check.sh
       - name: Playwright smoke (keyboard + touch, 0 console errors, hub CSP)
         run: npx playwright test
       - name: Upload Playwright report
