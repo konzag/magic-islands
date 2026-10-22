@@ -237,7 +237,7 @@ body.touch .spell .ic{font-size:24px;}
   <section id="lose" class="screen" hidden>
     <div class="card">
       <h2>Ωχ! Κουραστήκαμε…</h2>
-      <p>Ο Ναπολέων και η Αριάνα αποκοιμήθηκαν. Ο Ζαφείρης τους παίρνει πίσω στη Μονοκέρια για να ξαναπροσπαθήσουν!</p>
+      <p>Ο Ναπολέων και η Αριάνα αποκοιμήθηκαν. Ο Ζαφείρης τους ξυπνάει για να ξαναπροσπαθήσουν στο ίδιο νησί. Τα κλειδιά σας μένουν! 🗝️</p>
       <button class="big-btn" id="retry-btn">Ξανά από την αρχή 🐉</button>
     </div>
   </section>
@@ -1003,7 +1003,8 @@ function startWin(){
 function lose(){
   G.phase='lost';G.loseT=1.4;musicOn=false;sfx('lose');
 }
-function restart(){G.keys=0;initAudio();startIsland(0);}
+/* GAME-STANDARD §6 (no punishing loss): «Ξανά» restarts the same island; G.keys (the islands before it) stays. */
+function restart(){initAudio();startIsland(G.island);}
 /* homelab: saved progress, on this device only (localStorage; nothing is sent anywhere). It keeps the
    furthest island reached (its keys = the islands before it), so losing never takes progress away. */
 const SAVE_KEY='magic-islands.progress.v1';
