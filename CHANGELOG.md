@@ -1,6 +1,15 @@
 # Changelog
 
 ## Unreleased
+- **CI on every PR** (owner decision D21, rulesets with required checks): `.github/workflows/ci.yml` now runs on
+  `pull_request` into staging/main, on `push` to staging/main only (a PR branch commit runs CI once, not twice) and
+  on `workflow_dispatch`. Before, CI ran on push only, so a PR whose branch moved through GITHUB_TOKEN (Auto-merge,
+  the release PR) could show no checks at all (#30). Job ids / check names stay `test` and `gitleaks`.
+  - Tests: new `tests/ci-workflow.spec.ts` (file check, desktop project): triggers and branches, no paths filter,
+    workflow name `CI`, required jobs present, unconditioned and keeping their check names, no `${{ }}` inside a
+    `run:` script. Red on the old ci.yml; seven mutations of the new file (job renamed, check renamed, PR only on
+    staging, bare push, job-level `if:`, expression in `run:`, workflow renamed) all turn it red.
+    Test-count floor 200 → 206.
 - **T4 light + dark** (port of games-template d1aa5fc T4, GAME-STANDARD §3a): the cards, menus, buttons, HUD and
   dialog follow `prefers-color-scheme` through `:root[data-theme]` (new CSS variables; the light palette keeps
   WCAG AA, axe 0 serious in both). New 🌓 switch (`.theme-btn`, 52 px) on the title and pause cards: device → light →
