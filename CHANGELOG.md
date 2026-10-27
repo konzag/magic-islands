@@ -1,6 +1,33 @@
 # Changelog
 
 ## Unreleased
+- **a11y (axe-core 4.14, dependabot #36):** the hero cards' accessible names start with the visible name
+  (`label-content-name-mismatch`, WCAG 2.5.3): «Ναπολέων: παίξε με τον Ναπολέοντα», «Αριάνα: παίξε με την Αριάνα».
+  With axe-core 4.14 the joystick axe test was red (3 projects) and is green with this change; the rule is not disabled.
+- **Test:** new `tests/flight.spec.ts`: after the dragon flight (skipped, watched to the end, and from a save) the
+  heroes walk at once, by keys (desktop) and by finger (tablet, phone). README MI-44. Floor 216 → 222.
+- **GAMES-GFX storybook look** (art direction v1, owner «ναι» 2026-10-27), README MI-41..MI-43:
+  - `PALETTE` per island (+ `sky` for the title, flight and win): key light warm top-left, cool shade bottom-right,
+    rim, ink, cast shadow, vignette, grain, foreground colours. `finish()` paints the light, the rim and a varied ink
+    outline onto a base drawing.
+  - Painted once, copied every frame (`sprite()`, `blit()`): spirits (`spiritBody`, per eye position, tail-wave
+    step, blink, asleep), unicorns (`uniBody`, per facing, walk and tail step), props (`propDraw` body; sway, bob and
+    the glow plant's pulse stay live; seaweed stays live vector), the key, Ίριδα, and the minions (12 frames per cycle
+    of their main motion, `EFREQ`; their own phase picks the frame). Bosses, the dragon and the mermaid are painted
+    live into one scratch canvas (`paintLive`, a lighter finish). Inner `shadow()` calls are skipped while painting
+    (`NOSHADOW`); a soft `castShadow()` along the key light is drawn instead.
+  - Islands: the key light, paper grain and a beach / frost / blush rim baked into the ground; shaded cliffs; two
+    palms on Μονοκέρια's tips (outside the arena). Vignette + grain baked into the cached sea/sky (`bgBase`,
+    `skyBase`), no full-screen pass per frame. Foreground sprites at the screen's corners, 1.7× the camera
+    (`drawFore`). Defeated monsters burst into additive-glow sparkles (`glowBurst`, cap 60; none with reduced motion).
+  - At most one bake per frame (only every third frame while frames run over 20 ms); the cache is emptied on a palette
+    change and on resize. `CONFIG.storybook` (false = the plain vector art, test hook `/?e2e&plain`);
+    `CONFIG.slowFrameMs`/`slowFrameSec` switch the painted look off by itself on a slow device.
+  - Unchanged: gameplay, islands, controls, texts, the save key `magic-islands.progress.v1` and its format, the hub
+    contract (one inline script, no eval, no external URLs).
+  - Tests: new `tests/storybook.spec.ts` (sprites painted once and copied, `?plain`, sparkles, reduced motion, palette
+    per island + foreground); all 5 red on staging fd0d490, and six mutations turn them red. Probe
+    `window.__mi.paint`. Test-count floor 206 → 216.
 - **CI on every PR** (owner decision D21, rulesets with required checks): `.github/workflows/ci.yml` now runs on
   `pull_request` into staging/main, on `push` to staging/main only (a PR branch commit runs CI once, not twice) and
   on `workflow_dispatch`. Before, CI ran on push only, so a PR whose branch moved through GITHUB_TOKEN (Auto-merge,

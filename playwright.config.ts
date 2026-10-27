@@ -25,10 +25,11 @@ export default defineConfig({
       name: 'tablet',
       use: { viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
     },
-    // Floating joystick (tests/joystick.spec.ts) also on a landscape phone and a portrait tablet.
+    // Floating joystick (tests/joystick.spec.ts) also on a landscape phone and a portrait tablet; the flight walk
+    // (tests/flight.spec.ts) also on the phone.
     {
       name: 'phone',
-      testMatch: 'joystick.spec.ts',
+      testMatch: /(joystick|flight)\.spec\.ts/, // + the walk after the dragon flight (SHIP-ALL 2026-10-27)
       use: { viewport: { width: 780, height: 360 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
     },
     {
