@@ -1783,7 +1783,7 @@ function drawEnemy(c,e,t){
   c.save();
   if(e.flash>0){c.translate(rand(-2,2),0);}
   Blink.on=e.frozen<=0&&blinkAt(tt,e.ph);
-  if(Paint.on){castShadow(c,0,0,e.r*e.s*0.95,e.r*e.s*0.32);c.scale(e.s,e.s);
+  if(Paint.on){castShadow(c,0,0,e.r*0.95,e.r*0.32);c.scale(e.s,e.s);
     if(e.boss){NOSHADOW=true;paintLive(c,ENEMY_BOX,1,x=>EDRAW[e.kind](x,e,tt));NOSHADOW=false;} // one boss at a time: painted live
     else{ // minions share 12 frames per cycle of their main motion (their own phase picks the frame)
       const F=EFREQ[e.kind]||6,k=Math.floor((((tt*F+e.ph)%TAU)+TAU)%TAU/TAU*12),tq=(k+0.5)/12*TAU/F,face=e.face<0?-1:1;
