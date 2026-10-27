@@ -725,6 +725,7 @@ function glowDraw(c){
   c.restore();
 }
 function paintFrame(pal){ // once per frame: the palette of the screen, the bake budget, the counters
+  if(PALETTE[pal]!==Paint.P)Paint.sprites.clear(); // another island or screen: its own light, painted again
   Paint.frame++;Paint.P=PALETTE[pal];Paint.budget=Paint.ema>20&&Paint.frame%3?0:Paint.max;Paint.copies=0;Paint.live=0;Paint.fore=0;
   paintScale();
 }
@@ -1122,9 +1123,63 @@ function buildGround(I,idx){
   }
   // G1-GFX: a soft light along the top edges (baked once into the island)
   dia(0);g.strokeStyle='rgba(255,255,255,.22)';g.lineWidth=26;g.stroke();g.strokeStyle='rgba(255,255,255,.14)';g.lineWidth=60;g.stroke();
+  if(Paint.on)groundPaint(g,idx,dia);
   g.restore();
+  if(Paint.on)cliffPaint(g,I,idx,CL);
   dia(0);g.strokeStyle=I.rim;g.lineWidth=5;g.stroke();
+  if(Paint.on&&idx===0){palm(g,-AW+70,-18,1.05,-1);palm(g,AW-70,-24,0.95,1);} // two palms on the tips, outside the arena
   G.ground={c,ox:AW+P,oy:AH+P,w,h,s};
+}
+/* GAMES-GFX: the island's form, baked once with the ground: the key light across the whole island (warm top-left,
+   cool bottom-right), paper grain, a beach (Μονοκέρια) or a frost / blush rim inside the edge; shaded cliffs; palms. */
+function groundPaint(g,idx,dia){
+  const P=PALETTE[idx],lg=g.createLinearGradient(-AW,-AH,AW,AH);
+  lg.addColorStop(0,rgbaOf(P.key,0.24));lg.addColorStop(0.45,rgbaOf(P.key,0));lg.addColorStop(0.6,rgbaOf(P.shade,0));lg.addColorStop(1,rgbaOf(P.shade,0.22));
+  g.fillStyle=lg;g.fillRect(-AW,-AH,2*AW,2*AH);
+  const rim={0:['#ecd9a2',40,'#f7ecc8'],1:['#efe1b2',22,'#fff6d8'],2:['#ffffff',26,'#eef7ff'],3:['#ffe3ef',24,'#fff4f9']}[idx];
+  dia(0);g.strokeStyle=rim[0];g.globalAlpha=idx===0?0.95:0.55;g.lineWidth=rim[1]*2;g.stroke(); // inside the clip: a band along the edge
+  g.strokeStyle=rim[2];g.globalAlpha=0.8;g.lineWidth=6;g.setLineDash([22,16]);dia(0);g.stroke();g.setLineDash([]);g.globalAlpha=1;
+  g.globalAlpha=P.grain*1.6;g.fillStyle=g.createPattern(noiseTile(),'repeat');g.fillRect(-AW,-AH,2*AW,2*AH);g.globalAlpha=1;
+}
+function cliffPaint(g,I,idx,CL){
+  const P=PALETTE[idx],face=(x0,y0,x1,y1)=>{g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.lineTo(x1,y1+CL*(x1===0?1:0.6));g.lineTo(x0,y0+CL*(x0===0?1:0.6));g.closePath();};
+  for(const [x0,y0,x1,y1,k] of [[-AW,0,0,AH,0.1],[0,AH,AW,0,0.32]]){ // the left face takes the key light, the right one the shade
+    const v=g.createLinearGradient(0,0,0,AH+CL);v.addColorStop(0,'rgba(255,240,210,'+(0.26-k*0.6).toFixed(2)+')');v.addColorStop(1,rgbaOf(P.shade,k+0.18));
+    face(x0,y0,x1,y1);g.fillStyle=v;g.fill();}
+  g.strokeStyle=rgbaOf(P.ink,0.35);g.lineWidth=2.5;g.beginPath();g.moveTo(-AW,CL*0.6);g.lineTo(0,AH+CL);g.lineTo(AW,CL*0.6);g.stroke();
+}
+function palm(g,x,y,s,lean){
+  g.save();g.translate(x,y);g.scale(s,s);
+  g.fillStyle='rgba(20,30,70,.22)';g.beginPath();g.ellipse(26*lean,6,46,12,0,0,TAU);g.fill();
+  g.strokeStyle='#7a5432';g.lineWidth=11;g.lineCap='round';g.beginPath();g.moveTo(0,0);g.quadraticCurveTo(18*lean,-60,8*lean,-128);g.stroke();
+  g.strokeStyle='rgba(255,226,170,.55)';g.lineWidth=3;g.beginPath();g.moveTo(-3,-6);g.quadraticCurveTo(14*lean,-60,4*lean,-122);g.stroke(); // the trunk's lit side
+  g.strokeStyle='rgba(60,36,20,.45)';g.lineWidth=2;for(let i=1;i<9;i++){const u=i/9,tx=lerp(0,8*lean,u)+Math.sin(u*Math.PI)*12*lean,ty=-u*128;g.beginPath();g.moveTo(tx-5,ty);g.lineTo(tx+5,ty-3);g.stroke();}
+  const fr=[[-2.6,62,'#2f8a3c'],[-2,58,'#3fa048'],[-1.2,52,'#4fb456'],[-0.5,56,'#3fa048'],[0.3,60,'#2f8a3c'],[-3.1,48,'#24702f']];
+  g.translate(8*lean,-128);
+  for(const [a,l,col] of fr){g.save();g.rotate(lean>0?a:-Math.PI-a);g.fillStyle=col;g.beginPath();g.moveTo(0,0);g.quadraticCurveTo(l*0.5,-14,l,6);g.quadraticCurveTo(l*0.5,2,0,0);g.fill();
+    g.strokeStyle='rgba(20,60,30,.5)';g.lineWidth=1.5;g.beginPath();g.moveTo(0,0);g.quadraticCurveTo(l*0.5,-6,l,6);g.stroke();g.restore();}
+  g.fillStyle='#6b4a2a';for(const [cx,cy] of [[-5,4],[4,6],[0,9]]){g.beginPath();g.arc(cx,cy,5,0,TAU);g.fill();}
+  g.restore();
+}
+/* Layer 4: the foreground at the screen's corners, 1.7x the camera (leaves, kelp, frosted branches, pink wisps). */
+const FORE={};
+function foreSprite(idx){
+  if(FORE[idx])return FORE[idx];
+  const c=paintCanvas(260,200),x=c.getContext('2d'),P=PALETTE[idx];
+  x.translate(0,200);
+  if(idx===0||idx===2){for(let i=0;i<7;i++){x.save();x.rotate(-0.15-i*0.2);x.fillStyle=P.fore[i%3];x.beginPath();x.moveTo(0,0);x.quadraticCurveTo(90,-40,170-i*8,-6);x.quadraticCurveTo(90,16,0,0);x.fill();
+    x.strokeStyle='rgba(255,255,255,.18)';x.lineWidth=2;x.beginPath();x.moveTo(6,0);x.quadraticCurveTo(90,-14,160-i*8,-4);x.stroke();x.restore();}}
+  else if(idx===1){x.lineCap='round';for(let i=0;i<5;i++){x.strokeStyle=P.fore[i%3];x.lineWidth=14-i;x.beginPath();x.moveTo(20+i*26,0);for(let j=1;j<=6;j++)x.lineTo(20+i*26+Math.sin(j*0.9+i)*14,-j*28-i*6);x.stroke();}}
+  else{for(let i=0;i<5;i++){x.fillStyle=P.fore[i%3];x.globalAlpha=0.85;x.beginPath();x.ellipse(40+i*38,-30-(i%2)*30,60,34,0,0,TAU);x.fill();}x.globalAlpha=1;}
+  return(FORE[idx]=c);
+}
+function drawFore(idx){
+  if(!Paint.on)return;
+  const sp=foreSprite(idx),k=Math.min(W,H)/900,w=260*k,h=200*k,ox=reduceMotion?0:-(G.cam.x*0.7*ZOOM)%60,oy=reduceMotion?0:-((G.cam.y-60)*0.7*ZOOM)%40;
+  ctx.save();ctx.globalAlpha=0.9;
+  ctx.drawImage(sp,-30*k+ox*0.5,H-h+20*k+oy*0.4,w,h);
+  ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(sp,-30*k-ox*0.5,H-h+28*k+oy*0.4,w*0.9,h*0.9);
+  ctx.restore();Paint.fore++;
 }
 function makeProps(idx){
   const I=ISL[idx],rng=mulberry32(idx*31+5),out=[];
@@ -1795,6 +1850,7 @@ function renderWorld(){
   drawIris(ctx,G.iris.x,G.iris.y+Math.sin(G.t*1.5)*6,0.75,G.t);
   drawFxAir(ctx);
   ctx.restore();
+  drawFore(idx);
   // screen overlays
   if(idx===1){ctx.fillStyle='rgba(20,90,170,.16)';ctx.fillRect(0,0,W,H);}
   drawAmb();
