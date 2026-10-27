@@ -1,6 +1,11 @@
 # Changelog
 
 ## Unreleased
+- **a11y (axe-core 4.14, dependabot #36):** the hero cards' accessible names start with the visible name
+  (`label-content-name-mismatch`, WCAG 2.5.3): «Ναπολέων: παίξε με τον Ναπολέοντα», «Αριάνα: παίξε με την Αριάνα».
+  With axe-core 4.14 the joystick axe test was red (3 projects) and is green with this change; the rule is not disabled.
+- **Test:** new `tests/flight.spec.ts`: after the dragon flight (skipped, watched to the end, and from a save) the
+  heroes walk at once, by keys (desktop) and by finger (tablet, phone). README MI-44. Floor 216 → 222.
 - **GAMES-GFX storybook look** (art direction v1, owner «ναι» 2026-10-27), README MI-41..MI-43:
   - `PALETTE` per island (+ `sky` for the title, flight and win): key light warm top-left, cool shade bottom-right,
     rim, ink, cast shadow, vignette, grain, foreground colours. `finish()` paints the light, the rim and a varied ink
