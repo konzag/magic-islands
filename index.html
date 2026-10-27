@@ -315,7 +315,10 @@ const CONFIG={
     splash:26,     // water drops + rings when Ζαφείρης dives into the sea (flight to Γοργονία)
     waterHit:7,    // drops where a Κύμα Νερού hits
     firework:40    // sparks per firework on the win screen
-  }
+  },
+  storybook:true,  // GAMES-GFX painted look (sprites painted once, then copied); false = the plain vector art
+  slowFrameMs:30,  // frames slower than this for slowFrameSec in a row switch the painted look off by itself (once)
+  slowFrameSec:4
 };
 const $=id=>document.getElementById(id);
 const cv=$('cv'), ctx=cv.getContext('2d');
@@ -606,6 +609,111 @@ function cloudSprite(tint){ // a storybook cloud: round puffs with a clear edge,
   x.globalCompositeOperation='source-atop';const g=x.createLinearGradient(0,40,0,122);g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(1,tint);x.fillStyle=g;x.fillRect(0,0,256,128);
   return(SPR[k]=c);
 }
+
+/* ---------------- STORYBOOK PAINT (GAMES-GFX 2026-10-26, art direction v1 approved by the owner 27/10) ----------------
+   Every spirit, unicorn, prop, the key and Ίριδα is painted ONCE into an offscreen canvas (the base drawing + the
+   finish below) and then only copied each frame; their motion (bob, squash, sway, the shadow, the glow) stays live.
+   Enemies, the dragon and the mermaid move in too many ways to cache: they are drawn live into one scratch canvas
+   and get the same finish there. The finish = a warm key light from the top-left and a cool shade towards the
+   bottom-right, a rim light on the lit edge and a soft ink outline of varied weight, from PALETTE (one set per
+   island, plus the night sky of the title, flight and win screens). At most Paint.max bakes per frame.
+   Layers: sky + far islets (drawBg, 0.08x the camera) → island and ground → y-sorted world → foreground at the
+   screen's edges (1.7x the camera) → one cached paper-grain + vignette layer. CONFIG.storybook=false or slow frames
+   (CONFIG.slowFrameMs) keep the plain vector art. */
+const PALETTE={
+  0:{key:'#fff0cf',keyA:.30,shade:'#2f4f8f',shadeA:.24,rim:'#fff6dd',rimA:.6,ink:'#1d2a44',inkA:.58,sh:'20,30,70',shA:.3,vig:'8,30,62',vigA:.26,grain:.07,fore:['#3f8f45','#2f7a3c','#1f5a2c']},
+  1:{key:'#dcfbff',keyA:.24,shade:'#0f3a6a',shadeA:.30,rim:'#e8fdff',rimA:.55,ink:'#0e2640',inkA:.58,sh:'5,30,60',shA:.28,vig:'3,22,52',vigA:.34,grain:.06,fore:['#1f6f5a','#17584a','#0f4038']},
+  2:{key:'#fff6e8',keyA:.26,shade:'#33489a',shadeA:.26,rim:'#ffffff',rimA:.62,ink:'#1f2c56',inkA:.58,sh:'40,60,120',shA:.26,vig:'30,40,100',vigA:.26,grain:.06,fore:['#e8f4ff','#c8dcf4','#a8c0e4']},
+  3:{key:'#ffe6d6',keyA:.30,shade:'#7a3f8f',shadeA:.24,rim:'#fff2f8',rimA:.62,ink:'#3a1c44',inkA:.58,sh:'90,30,80',shA:.26,vig:'80,24,86',vigA:.24,grain:.06,fore:['#ffd6e8','#ffb8d6','#f59ac4']},
+  sky:{key:'#ffe9c8',keyA:.22,shade:'#2a2a7a',shadeA:.30,rim:'#fff3dc',rimA:.55,ink:'#1a1440',inkA:.6,sh:'20,10,60',shA:.3,vig:'14,8,40',vigA:.3,grain:.06,fore:null}
+};
+const Paint={on:true,auto:false,P:PALETTE[0],R:1,max:1,budget:0,frame:0,bakes:0,bakeMs:0,live:0,copies:0,sprites:new Map(),
+  post:null,postBuilds:0,fore:0,ema:0,slow:0};
+if(new URLSearchParams(location.search).has('plain'))CONFIG.storybook=false; // test hook: the plain vector art
+Paint.on=!!CONFIG.storybook;
+const rgbaOf=(hex,a)=>{const n=parseInt(hex.slice(1),16);return 'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+a+')';};
+function paintCanvas(w,h){const c=document.createElement('canvas');c.width=Math.max(1,Math.ceil(w));c.height=Math.max(1,Math.ceil(h));return c;}
+let NOISE=null;
+function noiseTile(){ // 128x128 grey grain: the paper of the storybook (one tile, repeated)
+  if(NOISE)return NOISE;
+  const c=paintCanvas(128,128),x=c.getContext('2d'),d=x.createImageData(128,128),r=mulberry32(3);
+  for(let i=0;i<d.data.length;i+=4){const v=r()>0.5?255:0;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=r()*80;}
+  x.putImageData(d,0,0);return(NOISE=c);
+}
+const Scratch=[null,null,null]; // shared by every bake and live paint (a new canvas each time was the dearest part)
+function scratch(i,w,h){
+  let c=Scratch[i];if(!c)c=Scratch[i]=paintCanvas(w,h);
+  if(c.width<w||c.height<h){c.width=Math.max(c.width,w);c.height=Math.max(c.height,h);}
+  const x=c.getContext('2d');x.setTransform(1,0,0,1,0,0);x.globalCompositeOperation='source-over';x.globalAlpha=1;x.clearRect(0,0,c.width,c.height);
+  return c;
+}
+/* The finish on a painted base (canvas pixels w x h at the top-left of c; R = pixels per world unit). */
+function finish(c,w,h,P,R,grain){
+  const x=c.getContext('2d');x.setTransform(1,0,0,1,0,0);
+  const sil=scratch(0,w,h),s=sil.getContext('2d');s.drawImage(c,0,0,w,h,0,0,w,h);s.globalCompositeOperation='source-in';s.fillStyle=rgbaOf(P.ink,P.inkA);s.fillRect(0,0,w,h);
+  const g=x.createLinearGradient(0,0,w*0.9,h);g.addColorStop(0,rgbaOf(P.key,P.keyA));g.addColorStop(0.45,rgbaOf(P.key,0));g.addColorStop(0.55,rgbaOf(P.shade,0));g.addColorStop(1,rgbaOf(P.shade,P.shadeA));
+  x.globalCompositeOperation='source-atop';x.fillStyle=g;x.fillRect(0,0,w,h);
+  const rim=scratch(1,w,h),q=rim.getContext('2d');q.drawImage(c,0,0,w,h,0,0,w,h);q.globalCompositeOperation='source-in';q.fillStyle=P.rim;q.fillRect(0,0,w,h);
+  q.globalCompositeOperation='destination-out';q.drawImage(c,0,0,w,h,0.85*R,0.85*R,w,h); // the lit edge: top-left, where the key light comes from
+  x.globalAlpha=P.rimA;x.drawImage(rim,0,0,w,h,0,0,w,h);x.globalAlpha=1;
+  if(grain){x.globalAlpha=grain;x.fillStyle=x.createPattern(noiseTile(),'repeat');x.fillRect(0,0,w,h);x.globalAlpha=1;}
+  // ink outline behind the painting, a little heavier on the shade side (bottom-right)
+  x.globalCompositeOperation='destination-over';const o=Math.max(0.6,R*0.55);
+  for(const [dx,dy] of [[-0.8,-0.6],[0.7,-0.8],[-0.6,0.9],[1.25,1.25],[1.3,-0.1]])x.drawImage(sil,0,0,w,h,dx*o,dy*o,w,h);
+  x.globalCompositeOperation='source-over';
+}
+function paintScale(){ // world sprites at the screen's own scale (capped at 2 px per world unit); a resize bakes again
+  const R=clamp(Math.round(ZOOM*DPR*4)/4,0.5,2);
+  if(R!==Paint.R){Paint.R=R;Paint.sprites.clear();}
+}
+/* A cached sprite: key, box [x0,y0,x1,y1] in drawing units, scale k (the drawing's own size), draw(c) the base. */
+function sprite(key,box,k,draw){
+  const R=Math.round(Paint.R*k*4)/4,id=key+'|'+R;let sp=Paint.sprites.get(id);
+  if(sp)return sp;
+  if(Paint.budget<=0)return null;
+  Paint.budget--;Paint.bakes++;const b0=performance.now();
+  const w=(box[2]-box[0])*R,h=(box[3]-box[1])*R,c=paintCanvas(w,h),x=c.getContext('2d');
+  x.setTransform(R,0,0,R,-box[0]*R,-box[1]*R);x.lineCap='round';x.lineJoin='round';draw(x);
+  finish(c,c.width,c.height,Paint.P,R,0);Paint.bakeMs+=performance.now()-b0;
+  sp={c,box};Paint.sprites.set(id,sp);
+  if(Paint.sprites.size>420)Paint.sprites.delete(Paint.sprites.keys().next().value); // oldest first
+  return sp;
+}
+function blit(c,sp){const b=sp.box;c.drawImage(sp.c,b[0],b[1],b[2]-b[0],b[3]-b[1]);Paint.copies++;}
+/* Live paint: the drawing goes into a scratch canvas at the current scale and gets the finish there (enemies, the
+   dragon, the mermaid). box in drawing units around (0,0); k = the drawing's own size. */
+function paintLive(c,box,k,draw){
+  const m=c.getTransform(),R=clamp(Math.hypot(m.a,m.b)*k,0.4,2.5),w=Math.ceil((box[2]-box[0])*R),h=Math.ceil((box[3]-box[1])*R);
+  const s=scratch(2,w,h),x=s.getContext('2d');x.setTransform(R,0,0,R,-box[0]*R,-box[1]*R);x.lineCap='round';x.lineJoin='round';
+  draw(x);finish(s,w,h,Paint.P,R,0);
+  c.drawImage(s,0,0,w,h,box[0]*k,box[1]*k,(box[2]-box[0])*k,(box[3]-box[1])*k);Paint.live++;
+}
+/* Soft cast shadow along the key light (towards the bottom-right): a wide faint ellipse and a smaller darker one. */
+function castShadow(c,x,y,rx,ry,a){
+  const P=Paint.P,k=(a==null?1:a/0.3)*P.shA;
+  c.fillStyle='rgba('+P.sh+','+(k*0.45).toFixed(3)+')';c.beginPath();c.ellipse(x+rx*0.16,y+ry*0.2,rx*1.18,ry*1.3,0,0,TAU);c.fill();
+  c.fillStyle='rgba('+P.sh+','+(k*0.7).toFixed(3)+')';c.beginPath();c.ellipse(x+rx*0.06,y+ry*0.06,rx*0.8,ry*0.85,0,0,TAU);c.fill();
+}
+function paintFrame(pal){ // once per frame: the palette of the screen, the bake budget, the counters
+  Paint.frame++;Paint.P=PALETTE[pal];Paint.budget=Paint.ema>20&&Paint.frame%3?0:Paint.max;Paint.copies=0;Paint.live=0;Paint.fore=0;
+  paintScale();
+}
+function watchPaint(ms){ // frame time while playing: the vignette and the painted look give way on a slow device
+  Paint.ema=Paint.ema?lerp(Paint.ema,ms,0.05):ms;
+  if(!Paint.on)return;
+  Paint.slow=ms>CONFIG.slowFrameMs?Paint.slow+ms/1000:0;
+  if(Paint.slow>CONFIG.slowFrameSec){Paint.on=false;Paint.auto=true;}
+}
+/* The paper grain + vignette over the whole screen: one canvas per screen size and palette, copied each frame. */
+function postLayer(pal){
+  const key=W+'|'+H+'|'+DPR+'|'+pal;if(Paint.post&&Paint.post.key===key)return Paint.post.c;
+  const P=PALETTE[pal],c=paintCanvas(W*DPR,H*DPR),x=c.getContext('2d');
+  const r=Math.hypot(W,H)*DPR/2,g=x.createRadialGradient(c.width/2,c.height*0.46,r*0.45,c.width/2,c.height/2,r);
+  g.addColorStop(0,'rgba('+P.vig+',0)');g.addColorStop(1,'rgba('+P.vig+','+P.vigA+')');x.fillStyle=g;x.fillRect(0,0,c.width,c.height);
+  x.globalAlpha=P.grain;x.fillStyle=x.createPattern(noiseTile(),'repeat');x.fillRect(0,0,c.width,c.height);x.globalAlpha=1;
+  Paint.post={key,c};Paint.postBuilds++;return c;
+}
+function drawPost(pal){if(!Paint.on)return;ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(postLayer(pal),0,0);ctx.restore();}
 const Blink={on:false}; // set per creature while it draws: a short blink every few seconds
 const blinkAt=(t,ph)=>((t+ph*1.37)%3.9)<0.12;
 function eyesAngry(c,x,y,r,col){ // G1-GFX: cute and "ready to play": round eyes, a soft short brow, blush, a blink
