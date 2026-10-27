@@ -65,14 +65,17 @@ test.beforeEach(({}, info) => {
 test('storybook paint: the world is painted once into sprites and then only copied', async ({ page }) => {
   const problems = await watch(page);
   await toPlay(page);
-  await page.waitForTimeout(6000); // every frame step of the spirits, unicorns and minions once
-  const a = await paint(page);
-  expect(a.on).toBe(true);
-  expect(a.sprites).toBeGreaterThan(30);
-  expect(a.copies).toBeGreaterThan(30); // spirits, unicorns, props, key, Ίριδα, minions: copies in the last frame
-  await page.waitForTimeout(2000);
+  // the frame steps of the spirits, unicorns and minions get painted once; then a second of play paints (almost)
+  // nothing new (a sprite painted again every frame would add ~1 bake per frame forever)
+  await expect.poll(async () => {
+    const a = (await paint(page)).bakes;
+    await page.waitForTimeout(1000);
+    return (await paint(page)).bakes - a;
+  }, { timeout: 30_000, intervals: [0] }).toBeLessThan(8);
   const b = await paint(page);
-  expect(b.bakes - a.bakes, 'about 120 frames, only a few new frame steps painted').toBeLessThan(40);
+  expect(b.on).toBe(true);
+  expect(b.sprites).toBeGreaterThan(30);
+  expect(b.copies).toBeGreaterThan(30); // spirits, unicorns, props, key, Ίριδα, minions: copies in the last frame
   expect(b.post).toBe(true);
   expect(problems).toEqual([]);
 });
