@@ -315,7 +315,10 @@ const CONFIG={
     splash:26,     // water drops + rings when Ζαφείρης dives into the sea (flight to Γοργονία)
     waterHit:7,    // drops where a Κύμα Νερού hits
     firework:40    // sparks per firework on the win screen
-  }
+  },
+  storybook:true,  // GAMES-GFX painted look (sprites painted once, then copied); false = the plain vector art
+  slowFrameMs:30,  // frames slower than this for slowFrameSec in a row switch the painted look off by itself (once)
+  slowFrameSec:4
 };
 const $=id=>document.getElementById(id);
 const cv=$('cv'), ctx=cv.getContext('2d');
@@ -582,7 +585,8 @@ function setMuted(m){muted=m;$('snd').textContent=m?'🔇':'🔊';if(master)mast
 
 /* ---------------- DRAW HELPERS ---------------- */
 function ell(c,x,y,rx,ry,fill){c.beginPath();c.ellipse(x,y,Math.max(0.1,rx),Math.max(0.1,ry),0,0,TAU);if(fill)c.fillStyle=fill;c.fill();}
-function shadow(c,x,y,rx,ry,a){c.fillStyle='rgba(10,5,30,'+(a==null?0.3:a)+')';c.beginPath();c.ellipse(x,y,rx,ry,0,0,TAU);c.fill();}
+let NOSHADOW=false; // set while a painted drawing is made: its ground shadow is drawn outside, as castShadow
+function shadow(c,x,y,rx,ry,a){if(NOSHADOW)return;c.fillStyle='rgba(10,5,30,'+(a==null?0.3:a)+')';c.beginPath();c.ellipse(x,y,rx,ry,0,0,TAU);c.fill();}
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
 function heartPath(c,x,y,s){c.beginPath();c.moveTo(x,y+s*0.35);c.bezierCurveTo(x-s,y-s*0.3,x-s*0.5,y-s*1.1,x,y-s*0.45);c.bezierCurveTo(x+s*0.5,y-s*1.1,x+s,y-s*0.3,x,y+s*0.35);c.closePath();}
 function tri(c,a,b,d,e,f,g){c.beginPath();c.moveTo(a,b);c.lineTo(d,e);c.lineTo(f,g);c.closePath();c.fill();}
@@ -606,6 +610,140 @@ function cloudSprite(tint){ // a storybook cloud: round puffs with a clear edge,
   x.globalCompositeOperation='source-atop';const g=x.createLinearGradient(0,40,0,122);g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(1,tint);x.fillStyle=g;x.fillRect(0,0,256,128);
   return(SPR[k]=c);
 }
+
+/* ---------------- STORYBOOK PAINT (GAMES-GFX 2026-10-26, art direction v1 approved by the owner 27/10) ----------------
+   Every spirit, unicorn, prop, the key and Ίριδα is painted ONCE into an offscreen canvas (the base drawing + the
+   finish below) and then only copied each frame; their motion (bob, squash, sway, the shadow, the glow) stays live.
+   Enemies, the dragon and the mermaid move in too many ways to cache: they are drawn live into one scratch canvas
+   and get the same finish there. The finish = a warm key light from the top-left and a cool shade towards the
+   bottom-right, a rim light on the lit edge and a soft ink outline of varied weight, from PALETTE (one set per
+   island, plus the night sky of the title, flight and win screens). At most Paint.max bakes per frame.
+   Layers: sky + far islets (drawBg, 0.08x the camera; the paper grain + vignette are baked into its cached sea/sky)
+   → island and ground → y-sorted world → foreground at the screen's edges (1.7x the camera). CONFIG.storybook=false or slow frames
+   (CONFIG.slowFrameMs) keep the plain vector art. */
+const PALETTE={
+  0:{key:'#fff0cf',keyA:.30,shade:'#2f4f8f',shadeA:.24,rim:'#fff6dd',rimA:.6,ink:'#1d2a44',inkA:.58,sh:'20,30,70',shA:.3,vig:'8,30,62',vigA:.26,grain:.07,fore:['#3f8f45','#2f7a3c','#1f5a2c']},
+  1:{key:'#dcfbff',keyA:.24,shade:'#0f3a6a',shadeA:.30,rim:'#e8fdff',rimA:.55,ink:'#0e2640',inkA:.58,sh:'5,30,60',shA:.28,vig:'3,22,52',vigA:.34,grain:.06,fore:['#1f6f5a','#17584a','#0f4038']},
+  2:{key:'#fff6e8',keyA:.26,shade:'#33489a',shadeA:.26,rim:'#ffffff',rimA:.62,ink:'#1f2c56',inkA:.58,sh:'40,60,120',shA:.26,vig:'30,40,100',vigA:.26,grain:.06,fore:['#e8f4ff','#c8dcf4','#a8c0e4']},
+  3:{key:'#ffe6d6',keyA:.30,shade:'#7a3f8f',shadeA:.24,rim:'#fff2f8',rimA:.62,ink:'#3a1c44',inkA:.58,sh:'90,30,80',shA:.26,vig:'80,24,86',vigA:.24,grain:.06,fore:['#ffd6e8','#ffb8d6','#f59ac4']},
+  sky:{key:'#ffe9c8',keyA:.22,shade:'#2a2a7a',shadeA:.30,rim:'#fff3dc',rimA:.55,ink:'#1a1440',inkA:.6,sh:'20,10,60',shA:.3,vig:'14,8,40',vigA:.3,grain:.06,fore:null}
+};
+const Paint={on:true,auto:false,P:PALETTE[0],R:1,max:1,budget:0,frame:0,bakes:0,bakeMs:0,live:0,copies:0,sprites:new Map(),
+  post:null,postBuilds:0,fore:0,ema:0,slow:0};
+if(new URLSearchParams(location.search).has('plain'))CONFIG.storybook=false; // test hook: the plain vector art
+Paint.on=!!CONFIG.storybook;
+const rgbaOf=(hex,a)=>{const n=parseInt(hex.slice(1),16);return 'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+a+')';};
+function paintCanvas(w,h){const c=document.createElement('canvas');c.width=Math.max(1,Math.ceil(w));c.height=Math.max(1,Math.ceil(h));return c;}
+let NOISE=null;
+function noiseTile(){ // 128x128 grey grain: the paper of the storybook (one tile, repeated)
+  if(NOISE)return NOISE;
+  const c=paintCanvas(128,128),x=c.getContext('2d'),d=x.createImageData(128,128),r=mulberry32(3);
+  for(let i=0;i<d.data.length;i+=4){const v=r()>0.5?255:0;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=r()*80;}
+  x.putImageData(d,0,0);return(NOISE=c);
+}
+const Scratch=[null,null,null]; // shared by every bake and live paint (a new canvas each time was the dearest part)
+function scratch(i,w,h){
+  let c=Scratch[i];if(!c)c=Scratch[i]=paintCanvas(w,h);
+  if(c.width<w||c.height<h){c.width=Math.max(c.width,w);c.height=Math.max(c.height,h);}
+  const x=c.getContext('2d');x.setTransform(1,0,0,1,0,0);x.globalCompositeOperation='source-over';x.globalAlpha=1;x.clearRect(0,0,c.width,c.height);
+  return c;
+}
+/* The finish on a painted base (canvas pixels w x h at the top-left of c; R = pixels per world unit). */
+function finish(c,w,h,P,R,grain,lite){ // lite (live paints): no rim pass, three outline offsets
+  const x=c.getContext('2d');x.setTransform(1,0,0,1,0,0);
+  const sil=scratch(0,w,h),s=sil.getContext('2d');s.drawImage(c,0,0,w,h,0,0,w,h);s.globalCompositeOperation='source-in';s.fillStyle=rgbaOf(P.ink,P.inkA);s.fillRect(0,0,w,h);
+  const g=x.createLinearGradient(0,0,w*0.9,h);g.addColorStop(0,rgbaOf(P.key,P.keyA));g.addColorStop(0.45,rgbaOf(P.key,0));g.addColorStop(0.55,rgbaOf(P.shade,0));g.addColorStop(1,rgbaOf(P.shade,P.shadeA));
+  x.globalCompositeOperation='source-atop';x.fillStyle=g;x.fillRect(0,0,w,h);
+  if(!lite){const rim=scratch(1,w,h),q=rim.getContext('2d');q.drawImage(c,0,0,w,h,0,0,w,h);q.globalCompositeOperation='source-in';q.fillStyle=P.rim;q.fillRect(0,0,w,h);
+  q.globalCompositeOperation='destination-out';q.drawImage(c,0,0,w,h,0.85*R,0.85*R,w,h); // the lit edge: top-left, where the key light comes from
+  x.globalAlpha=P.rimA;x.drawImage(rim,0,0,w,h,0,0,w,h);x.globalAlpha=1;}
+  if(grain){x.globalAlpha=grain;x.fillStyle=x.createPattern(noiseTile(),'repeat');x.fillRect(0,0,w,h);x.globalAlpha=1;}
+  // ink outline behind the painting, a little heavier on the shade side (bottom-right)
+  x.globalCompositeOperation='destination-over';const o=Math.max(0.6,R*0.55);
+  for(const [dx,dy] of lite?[[-0.8,-0.6],[0.6,0.9],[1.25,1.25]]:[[-0.8,-0.6],[0.7,-0.8],[-0.6,0.9],[1.25,1.25],[1.3,-0.1]])x.drawImage(sil,0,0,w,h,dx*o,dy*o,w,h);
+  x.globalCompositeOperation='source-over';
+}
+function paintScale(){ // world sprites at the screen's own scale (capped at 2 px per world unit); a resize bakes again
+  const R=clamp(Math.round(ZOOM*DPR*4)/4,0.5,2);
+  if(R!==Paint.R){Paint.R=R;Paint.sprites.clear();}
+}
+/* A cached sprite: key, box [x0,y0,x1,y1] in drawing units, scale k (the drawing's own size), draw(c) the base. */
+function sprite(key,box,k,draw){
+  const R=Math.round(Paint.R*k*4)/4,id=key+'|'+R;let sp=Paint.sprites.get(id);
+  if(sp)return sp;
+  if(Paint.budget<=0)return null;
+  Paint.budget--;Paint.bakes++;const b0=performance.now();
+  const w=(box[2]-box[0])*R,h=(box[3]-box[1])*R,c=paintCanvas(w,h),x=c.getContext('2d');
+  x.setTransform(R,0,0,R,-box[0]*R,-box[1]*R);x.lineCap='round';x.lineJoin='round';draw(x);
+  finish(c,c.width,c.height,Paint.P,R,0);Paint.bakeMs+=performance.now()-b0;
+  sp={c,box};Paint.sprites.set(id,sp);
+  if(Paint.sprites.size>420)Paint.sprites.delete(Paint.sprites.keys().next().value); // oldest first
+  return sp;
+}
+function blit(c,sp){const b=sp.box;c.drawImage(sp.c,b[0],b[1],b[2]-b[0],b[3]-b[1]);Paint.copies++;}
+/* Live paint: the drawing goes into a scratch canvas at the current scale and gets the finish there (enemies, the
+   dragon, the mermaid). box in drawing units around (0,0); k = the drawing's own size. */
+function paintLive(c,box,k,draw){
+  const m=c.getTransform(),R=clamp(Math.hypot(m.a,m.b)*k,0.4,1.25),w=Math.ceil((box[2]-box[0])*R),h=Math.ceil((box[3]-box[1])*R);
+  const s=scratch(2,w,h),x=s.getContext('2d');x.setTransform(R,0,0,R,-box[0]*R,-box[1]*R);x.lineCap='round';x.lineJoin='round';
+  draw(x);finish(s,w,h,Paint.P,R,0,true);
+  c.drawImage(s,0,0,w,h,box[0]*k,box[1]*k,(box[2]-box[0])*k,(box[3]-box[1])*k);Paint.live++;
+}
+/* Soft cast shadow along the key light (towards the bottom-right): a wide faint ellipse and a smaller darker one. */
+function castShadow(c,x,y,rx,ry,a){
+  const P=Paint.P,k=(a==null?1:a/0.3)*P.shA;
+  c.fillStyle='rgba('+P.sh+','+(k*0.45).toFixed(3)+')';c.beginPath();c.ellipse(x+rx*0.16,y+ry*0.2,rx*1.18,ry*1.3,0,0,TAU);c.fill();
+  c.fillStyle='rgba('+P.sh+','+(k*0.7).toFixed(3)+')';c.beginPath();c.ellipse(x+rx*0.06,y+ry*0.06,rx*0.8,ry*0.85,0,0,TAU);c.fill();
+}
+/* Sparkles: a defeated monster turns into glowing four-point stars (additive glow, one sprite per colour) that rise,
+   shrink and fade. Capped at Glow.max; none with reduced motion or with the particles off (PON). */
+const Glow={list:[],n:0,max:60,spawned:0};
+function sparkSprite(col){
+  const k='spark|'+col;if(SPR[k])return SPR[k];
+  const c=paintCanvas(64,64),x=c.getContext('2d'),g=x.createRadialGradient(32,32,0,32,32,32);
+  g.addColorStop(0,'rgba(255,255,255,.95)');g.addColorStop(0.18,col);g.addColorStop(1,'rgba(255,255,255,0)');x.globalAlpha=0.55;x.fillStyle=g;x.fillRect(0,0,64,64);x.globalAlpha=1;
+  x.fillStyle='#ffffff';x.beginPath();x.moveTo(32,6);x.lineTo(36,28);x.lineTo(58,32);x.lineTo(36,36);x.lineTo(32,58);x.lineTo(28,36);x.lineTo(6,32);x.lineTo(28,28);x.closePath();x.fill();
+  return(SPR[k]=c);
+}
+function glowBurst(x,y,cols,n){
+  if(!PON||!Paint.on)return;
+  for(let i=0;i<n;i++){
+    if(Glow.list.length>=Glow.max)Glow.list.shift(); // full: the newest sparkle wins
+    const a=Math.random()*TAU,s=rand(30,130),life=rand(0.6,1.2);
+    Glow.list.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s*0.6-60,life,max:life,r:rand(6,16),col:cols[i%cols.length]});Glow.spawned++;
+  }
+  Glow.n=Glow.list.length;
+}
+function glowUpdate(dt){
+  const L=Glow.list;for(let i=L.length-1;i>=0;i--){const g=L[i];g.life-=dt;if(g.life<=0){L.splice(i,1);continue;}const k=Math.exp(-1.6*dt);g.vx*=k;g.vy=g.vy*k-20*dt;g.x+=g.vx*dt;g.y+=g.vy*dt;}
+  Glow.n=L.length;
+}
+function glowDraw(c){
+  if(!Glow.list.length)return;
+  c.save();c.globalCompositeOperation='lighter';
+  for(const g of Glow.list){const u=g.life/g.max,r=g.r*(0.5+0.5*u);c.globalAlpha=u<0.4?u/0.4:1;c.drawImage(sparkSprite(g.col),g.x-r*1.6,g.y-r*1.6,r*3.2,r*3.2);}
+  c.restore();
+}
+function paintFrame(pal){ // once per frame: the palette of the screen, the bake budget, the counters
+  if(PALETTE[pal]!==Paint.P)Paint.sprites.clear(); // another island or screen: its own light, painted again
+  Paint.frame++;Paint.P=PALETTE[pal];Paint.budget=Paint.ema>20&&Paint.frame%3?0:Paint.max;Paint.copies=0;Paint.live=0;Paint.fore=0;
+  paintScale();
+}
+function watchPaint(ms){ // frame time while playing: the vignette and the painted look give way on a slow device
+  Paint.ema=Paint.ema?lerp(Paint.ema,ms,0.05):ms;
+  if(!Paint.on)return;
+  Paint.slow=ms>CONFIG.slowFrameMs?Paint.slow+ms/1000:0;
+  if(Paint.slow>CONFIG.slowFrameSec){Paint.on=false;Paint.auto=true;}
+}
+/* The paper grain + vignette over the whole screen: one canvas per screen size and palette, copied each frame. */
+function postLayer(pal){
+  const key=W+'|'+H+'|'+DPR+'|'+pal;if(Paint.post&&Paint.post.key===key)return Paint.post.c;
+  const P=PALETTE[pal],c=paintCanvas(W*DPR,H*DPR),x=c.getContext('2d');
+  const r=Math.hypot(W,H)*DPR/2,g=x.createRadialGradient(c.width/2,c.height*0.46,r*0.45,c.width/2,c.height/2,r);
+  g.addColorStop(0,'rgba('+P.vig+',0)');g.addColorStop(1,'rgba('+P.vig+','+P.vigA+')');x.fillStyle=g;x.fillRect(0,0,c.width,c.height);
+  x.globalAlpha=P.grain;x.fillStyle=x.createPattern(noiseTile(),'repeat');x.fillRect(0,0,c.width,c.height);x.globalAlpha=1;
+  Paint.post={key,c};Paint.postBuilds++;return c;
+}
 const Blink={on:false}; // set per creature while it draws: a short blink every few seconds
 const blinkAt=(t,ph)=>((t+ph*1.37)%3.9)<0.12;
 function eyesAngry(c,x,y,r,col){ // G1-GFX: cute and "ready to play": round eyes, a soft short brow, blush, a blink
@@ -621,19 +759,30 @@ function eyesAngry(c,x,y,r,col){ // G1-GFX: cute and "ready to play": round eyes
 }
 
 /* Spirits */
+const SPIRIT_PAL={nap:{a:'#d6ff9a',b:'#3dbb68',glow:'150,255,140',eye:'#163a22'},ari:{a:'#f0faff',b:'#5aa6ff',glow:'150,210,255',eye:'#13284a'}};
 function drawSpirit(c,x,y,t,who,o){
   o=o||{};
-  const nap=who==='nap';
-  const pal=nap?{a:'#d6ff9a',b:'#3dbb68',glow:'150,255,140',eye:'#163a22'}:{a:'#f0faff',b:'#5aa6ff',glow:'150,210,255',eye:'#13284a'};
+  const nap=who==='nap',pal=SPIRIT_PAL[who];
   const bob=Math.sin(t*3+(nap?0:1.5))*5;
   c.save();c.translate(x,y);
-  if(!o.noShadow)shadow(c,0,0,24-bob*0.6,8-bob*0.2,o.down?0.2:0.32); // the shadow breathes with the bob
+  if(!o.noShadow){if(Paint.on&&!o.plain)castShadow(c,0,0,24-bob*0.6,8-bob*0.2,o.down?0.2:0.32);else shadow(c,0,0,24-bob*0.6,8-bob*0.2,o.down?0.2:0.32);} // the shadow breathes with the bob
   c.translate(0,-30+(o.down?14:bob));
   if(!o.down&&!reduceMotion){const sq=Math.cos(t*3+(nap?0:1.5))*0.035;c.scale(1+sq,1-sq);} // soft squash and stretch
   if(o.down)c.globalAlpha=0.55;
   if(o.hurt&&Math.floor(t*30)%2===0)c.globalAlpha*=0.5;
   glowAt(c,0,-28,62,pal.glow,0.5);
-  const wv=Math.sin(t*6)*3;
+  const bl=!o.down&&blinkAt(t,nap?0:2);
+  if(Paint.on&&!o.plain){ // the body as a sprite: 8 steps of the tail wave, 5 eye positions, blink, asleep
+    const ws=Math.floor((((t*6)%TAU)+TAU)%TAU/TAU*8),fq=Math.round(clamp(o.face||0,-1,1)*2)/2;
+    const sp=sprite('sp|'+who+'|'+(o.down?1:0)+'|'+fq+'|'+ws+'|'+(bl?1:0),[-34,-82,34,22],1,x=>spiritBody(x,who,o.down,fq*4,Math.sin((ws+0.5)/8*TAU)*3,bl));
+    if(sp)blit(c,sp);else spiritBody(c,who,o.down,clamp(o.face||0,-1,1)*4,Math.sin(t*6)*3,bl);
+  }else spiritBody(c,who,o.down,clamp(o.face||0,-1,1)*4,Math.sin(t*6)*3,bl);
+  if(o.down){c.fillStyle='#fff';c.font='bold 14px Comfortaa,sans-serif';c.fillText('z',22,-58-Math.sin(t*2)*4);c.fillText('z',30,-70-Math.sin(t*2+1)*4);}
+  c.restore();
+}
+/* The spirit's body without motion: fx = eye offset, wv = tail wave, bl = blink (drawn live or baked). */
+function spiritBody(c,who,down,fx,wv,bl){
+  const nap=who==='nap',pal=SPIRIT_PAL[who];
   c.beginPath();
   c.moveTo(-20,-32);
   c.bezierCurveTo(-24,-64,24,-64,20,-32);
@@ -646,13 +795,11 @@ function drawSpirit(c,x,y,t,who,o){
   // little arms
   c.strokeStyle=pal.b;c.lineWidth=5;c.lineCap='round';
   c.beginPath();c.moveTo(-17,-22);c.quadraticCurveTo(-27,-16+wv,-25,-8);c.moveTo(17,-22);c.quadraticCurveTo(27,-16-wv,25,-8);c.stroke();
-  const fx=clamp(o.face||0,-1,1)*4;
-  if(o.down){
+  if(down){
     c.strokeStyle=pal.eye;c.lineWidth=2.5;
     c.beginPath();c.moveTo(-11+fx,-40);c.lineTo(-4+fx,-40);c.moveTo(4+fx,-40);c.lineTo(11+fx,-40);c.stroke();
-    c.fillStyle='#fff';c.font='bold 14px Comfortaa,sans-serif';c.fillText('z',22,-58-Math.sin(t*2)*4);c.fillText('z',30,-70-Math.sin(t*2+1)*4);
   }else{
-    if(blinkAt(t,nap?0:2)){c.strokeStyle=pal.eye;c.lineWidth=2.2;c.lineCap='round';c.beginPath();c.moveTo(-10.5+fx,-40);c.quadraticCurveTo(-7+fx,-37.5,-3.5+fx,-40);c.moveTo(3.5+fx,-40);c.quadraticCurveTo(7+fx,-37.5,10.5+fx,-40);c.stroke();}
+    if(bl){c.strokeStyle=pal.eye;c.lineWidth=2.2;c.lineCap='round';c.beginPath();c.moveTo(-10.5+fx,-40);c.quadraticCurveTo(-7+fx,-37.5,-3.5+fx,-40);c.moveTo(3.5+fx,-40);c.quadraticCurveTo(7+fx,-37.5,10.5+fx,-40);c.stroke();}
     else{
     ell(c,-7+fx,-40,4.5,6,'#fff');ell(c,7+fx,-40,4.5,6,'#fff');
     ell(c,-6.5+fx*1.3,-39,2.6,3.6,pal.eye);ell(c,7.5+fx*1.3,-39,2.6,3.6,pal.eye);
@@ -670,31 +817,50 @@ function drawSpirit(c,x,y,t,who,o){
     c.restore();
     c.fillStyle='#b9e4ff';tri(c,-12,-56,-8,-64,-4,-57);tri(c,4,-57,8,-64,12,-56);
   }
-  c.restore();
 }
 
 function drawIris(c,x,y,s,t){
   c.save();c.translate(x,y);c.scale(s,s);
+  const bl=blinkAt(t,4);
+  if(Paint.on){ // a sprite per blink and 6 steps of the eyes' little bob
+    const bs=Math.floor((((t*2)%TAU)+TAU)%TAU/TAU*6),sp=sprite('iris|'+(bl?1:0)+'|'+bs,[-60,-54,60,18],s,u=>irisBody(u,Math.sin((bs+0.5)/6*TAU)*1.2,bl));
+    if(sp){blit(c,sp);c.restore();return;}
+  }
+  irisBody(c,Math.sin(t*2)*1.2,bl);
+  c.restore();
+}
+/* Ίριδα without motion: by = the eyes' bob, bl = blink. */
+function irisBody(c,by,bl){
   const cols=['#ff5a5a','#ff9a3c','#ffe14d','#6fdc6a','#4fb4ff','#6a6cff','#c06bff'];
   c.lineCap='round';
   cols.forEach((col,i)=>{c.strokeStyle=col;c.lineWidth=6;c.beginPath();c.arc(0,0,44-i*6,Math.PI,0);c.stroke();});
   for(const sd of [-1,1]){ell(c,sd*34,2,14,9,'#fff');ell(c,sd*24,5,10,7,'#fff');ell(c,sd*44,5,10,7,'#fff');}
-  const by=Math.sin(t*2)*1.2;
-  if(blinkAt(t,4)){c.strokeStyle='#2a1840';c.lineWidth=2.4;c.lineCap='round';c.beginPath();c.moveTo(-13,-30+by);c.quadraticCurveTo(-9,-27+by,-5,-30+by);c.moveTo(5,-30+by);c.quadraticCurveTo(9,-27+by,13,-30+by);c.stroke();}
+  if(bl){c.strokeStyle='#2a1840';c.lineWidth=2.4;c.lineCap='round';c.beginPath();c.moveTo(-13,-30+by);c.quadraticCurveTo(-9,-27+by,-5,-30+by);c.moveTo(5,-30+by);c.quadraticCurveTo(9,-27+by,13,-30+by);c.stroke();}
   else{ell(c,-9,-30+by,5,6,'#fff');ell(c,9,-30+by,5,6,'#fff');
   ell(c,-8.5,-29.5+by,2.6,3.4,'#2a1840');ell(c,9.5,-29.5+by,2.6,3.4,'#2a1840');}
   c.strokeStyle='#2a1840';c.lineWidth=2.4;c.beginPath();c.arc(0,-23+by,5,0.15*Math.PI,0.85*Math.PI);c.stroke();
   ell(c,-16,-23,3.5,2.2,'rgba(255,120,160,.7)');ell(c,16,-23,3.5,2.2,'rgba(255,120,160,.7)');
-  c.restore();
 }
 
 function drawUnicorn(c,x,y,t,face,s,walk){
-  c.save();c.translate(x,y);shadow(c,0,0,26*s,7*s);c.scale(face*s,s);
-  const l=walk?Math.sin(t*9)*5:0;
+  c.save();c.translate(x,y);
+  if(Paint.on){ // per facing (the key light stays top-left), 8 walk steps, 6 steps of the tail wave
+    castShadow(c,0,0,26*s,7*s);c.scale(s,s);
+    const ws=walk?Math.floor((((t*9)%TAU)+TAU)%TAU/TAU*8):-1,ts=Math.floor((((t*4)%TAU)+TAU)%TAU/TAU*6);
+    const sp=sprite('uni|'+face+'|'+ws+'|'+ts,[-48,-92,48,6],s,u=>{u.scale(face,1);uniBody(u,walk?Math.sin((ws+0.5)/8*TAU)*5:0,(ts+0.5)/6*TAU);});
+    if(sp)blit(c,sp);else{c.scale(face,1);uniBody(c,walk?Math.sin(t*9)*5:0,t*4);}
+    c.restore();return;
+  }
+  shadow(c,0,0,26*s,7*s);c.scale(face*s,s);
+  uniBody(c,walk?Math.sin(t*9)*5:0,t*4);
+  c.restore();
+}
+/* The unicorn without motion: l = leg swing, ta = tail/mane wave angle. */
+function uniBody(c,l,ta){
   c.strokeStyle='#e2d8f3';c.lineWidth=5;c.lineCap='round';
   [[-14,l],[-6,-l],[10,-l],[17,l]].forEach(p=>{c.beginPath();c.moveTo(p[0],-20);c.lineTo(p[0]+p[1],-1);c.stroke();});
   const tc=['#ff7ab0','#ffd36b','#7fe0ff','#b58cff'];
-  tc.forEach((col,i)=>{c.strokeStyle=col;c.lineWidth=3;c.beginPath();c.moveTo(-22,-30);c.quadraticCurveTo(-38,-26+i*4,-33+Math.sin(t*4+i)*3,-10+i*3);c.stroke();});
+  tc.forEach((col,i)=>{c.strokeStyle=col;c.lineWidth=3;c.beginPath();c.moveTo(-22,-30);c.quadraticCurveTo(-38,-26+i*4,-33+Math.sin(ta+i)*3,-10+i*3);c.stroke();});
   ell(c,0,-28,24,12,'#fbf8ff');
   c.fillStyle='#fbf8ff';c.beginPath();c.moveTo(12,-36);c.lineTo(22,-58);c.lineTo(32,-54);c.lineTo(22,-28);c.closePath();c.fill();
   c.save();c.translate(32,-58);c.rotate(0.35);ell(c,0,0,12,7,'#fbf8ff');c.restore();
@@ -702,10 +868,18 @@ function drawUnicorn(c,x,y,t,face,s,walk){
   tc.forEach((col,i)=>{c.strokeStyle=col;c.lineWidth=3;c.beginPath();c.moveTo(25-i*2,-64+i*2);c.quadraticCurveTo(15-i*2,-50,13-i*3,-34);c.stroke();});
   ell(c,35,-60,1.9,2.3,'#2a1840');
   ell(c,30,-54,2.5,1.5,'rgba(255,140,180,.6)');
-  c.restore();
 }
 
+/* The mermaid and the dragon move in too many ways for a sprite cache: painted live (title, flight and win only). */
 function drawMermaid(c,x,y,t,s){
+  if(!Paint.on){mermaidRaw(c,x,y,t,s);return;}
+  c.save();c.translate(x,y);castShadow(c,0,0,20*s,6*s);NOSHADOW=true;paintLive(c,[-26,-84,26,10],s,u=>mermaidRaw(u,0,0,t,1));NOSHADOW=false;c.restore();
+}
+function drawDragon(c,x,y,s,t,riders){
+  if(!Paint.on){dragonRaw(c,x,y,s,t,riders);return;}
+  c.save();c.translate(x,y);paintLive(c,[-182,-112,108,48],s,u=>dragonRaw(u,0,0,1,t,riders));c.restore();
+}
+function mermaidRaw(c,x,y,t,s){
   c.save();c.translate(x,y);c.scale(s,s);shadow(c,0,0,20,6);
   const w=Math.sin(t*3)*4;
   const g=c.createLinearGradient(0,-40,0,0);g.addColorStop(0,'#3fd1b0');g.addColorStop(1,'#2a8fd6');c.fillStyle=g;
@@ -731,7 +905,7 @@ function wing(c,x,y,flap,col,sc){
   c.beginPath();c.moveTo(0,0);c.lineTo(-20,up*0.9);c.moveTo(0,0);c.lineTo(40,up*0.8);c.moveTo(0,0);c.lineTo(54,up*0.35+10);c.stroke();
   c.restore();
 }
-function drawDragon(c,x,y,s,t,riders){
+function dragonRaw(c,x,y,s,t,riders){
   c.save();c.translate(x,y);c.scale(s,s);
   const flap=Math.sin(t*5);
   for(let i=14;i>=0;i--){
@@ -752,33 +926,52 @@ function drawDragon(c,x,y,s,t,riders){
   c.strokeStyle='#12304a';c.lineWidth=2;c.beginPath();c.arc(90,-49,5,0.1*Math.PI,0.7*Math.PI);c.stroke();
   ell(c,98,-52,1.5,1.2,'#12304a');
   ell(c,84,-52,3,2,'rgba(255,140,180,.55)');
-  if(riders){c.save();c.translate(-6,-22);c.scale(0.42,0.42);drawSpirit(c,-32,0,t,'nap',{noShadow:true});drawSpirit(c,32,0,t,'ari',{noShadow:true});c.restore();}
+  if(riders){c.save();c.translate(-6,-22);c.scale(0.42,0.42);drawSpirit(c,-32,0,t,'nap',{noShadow:true,plain:true});drawSpirit(c,32,0,t,'ari',{noShadow:true,plain:true});c.restore();}
   wing(c,6,-16,flap,'#5ad2e8',1);
   c.restore();
 }
 
 function drawKey(c,x,y,t,col){
-  c.save();c.translate(x,y);shadow(c,0,0,16,5);
+  c.save();c.translate(x,y);if(Paint.on)castShadow(c,0,0,16,5);else shadow(c,0,0,16,5);
   c.translate(0,-36+Math.sin(t*3)*6);
   glowAt(c,0,0,44,'255,230,140',0.7);
   c.rotate(Math.sin(t*2)*0.3);
+  const sp=Paint.on?sprite('key|'+col,[-16,-26,16,30],1,u=>keyBody(u,col)):null;
+  if(sp)blit(c,sp);else keyBody(c,col);
+  c.restore();
+}
+function keyBody(c,col){
   c.strokeStyle='#ffd45e';c.lineWidth=6;c.beginPath();c.arc(0,-10,10,0,TAU);c.stroke();
   c.fillStyle='#ffd45e';c.fillRect(-3,0,6,26);c.fillRect(3,14,8,5);c.fillRect(3,22,6,4);
   ell(c,0,-10,4.5,4.5,col);
-  c.restore();
 }
 
 /* Props */
+const PROP_SHADOW={flower:[10,3],glowplant:[12,4],bigleaf:[18,5],coral:[14,4],shell:[10,3],rock:[18,5],crystal:[14,4],icespike:[14,4],heartbush:[16,5],candyflower:[8,3],cloudlet:[18,4]};
+const PROP_SWAY={flower:1,glowplant:1,candyflower:1,bigleaf:0.5};
 function drawProp(c,p,t){
-  c.save();c.translate(p.x,p.y);const s=p.s;c.scale(s,s);
-  const sw=Math.sin(t*1.5+p.ph)*0.06;
+  if(!Paint.on||p.k==='seaweed'){propDraw(c,p,t,false);return;} // seaweed waves along its length: live
+  const sh=PROP_SHADOW[p.k],sw=Math.sin(t*1.5+p.ph)*0.06;
+  c.save();c.translate(p.x,p.y);c.scale(p.s,p.s);
+  if(sh)castShadow(c,0,0,sh[0],sh[1],p.k==='rock'?0.25:0.2);
+  if(PROP_SWAY[p.k])c.rotate(sw*PROP_SWAY[p.k]);
+  if(p.k==='cloudlet')c.translate(0,Math.sin(t*1.2+p.ph)*4);
+  const sp=sprite('prop|'+p.k+'|'+p.col,[-30,-58,30,10],p.s,u=>{NOSHADOW=true;propDraw(u,p,0,true);NOSHADOW=false;});
+  if(sp)blit(c,sp);else{NOSHADOW=true;propDraw(c,p,0,true);NOSHADOW=false;}
+  if(p.k==='glowplant'){const pulse=0.7+Math.sin(t*3+p.ph)*0.3;c.globalAlpha=pulse;c.drawImage(glowSprite(p.col.indexOf('255,200')>0?'255,200,255':'140,255,230',0.6,1),-16,-68,36,36);c.globalAlpha=1;}
+  c.restore();
+}
+/* The props as drawn before (G1-GFX); body = only the still drawing at (0,0), for a sprite (no sway, glow or bob). */
+function propDraw(c,p,t,body){
+  c.save();if(!body){c.translate(p.x,p.y);c.scale(p.s,p.s);}
+  const sw=body?0:Math.sin(t*1.5+p.ph)*0.06;
   switch(p.k){
     case 'flower':{shadow(c,0,0,10,3,.2);c.rotate(sw);c.strokeStyle='#3a8a35';c.lineWidth=3;c.beginPath();c.moveTo(0,0);c.quadraticCurveTo(4,-14,0,-28);c.stroke();
       ell(c,5,-14,6,3,'#4fb447');
       for(let i=0;i<5;i++){const a=i/5*TAU;ell(c,Math.cos(a)*6,-32+Math.sin(a)*6,5,5,p.col);}
       ell(c,0,-32,3.5,3.5,'#ffe14d');break;}
     case 'glowplant':{shadow(c,0,0,12,4,.2);c.rotate(sw);c.strokeStyle='#2fa08f';c.lineWidth=4;c.beginPath();c.moveTo(0,0);c.bezierCurveTo(-10,-20,14,-30,2,-46);c.stroke();
-      const pulse=0.7+Math.sin(t*3+p.ph)*0.3;c.globalAlpha=pulse;c.drawImage(glowSprite(p.col.indexOf('255,200')>0?'255,200,255':'140,255,230',0.6,1),-16,-68,36,36);c.globalAlpha=1;break;}
+      if(!body){const pulse=0.7+Math.sin(t*3+p.ph)*0.3;c.globalAlpha=pulse;c.drawImage(glowSprite(p.col.indexOf('255,200')>0?'255,200,255':'140,255,230',0.6,1),-16,-68,36,36);c.globalAlpha=1;}break;}
     case 'bigleaf':{shadow(c,0,0,18,5,.2);c.fillStyle='#3d9a45';for(const a of [-0.7,-0.2,0.4,0.9]){c.save();c.rotate(a+sw);ell(c,0,-18,7,18);c.restore();}
       c.fillStyle='#ff6fa8';ell(c,0,-6,5,5);break;}
     case 'seaweed':{for(let k=-1;k<=1;k++){c.strokeStyle=k?'#2e9b5a':'#3fbf6e';c.lineWidth=5;c.lineCap='round';c.beginPath();c.moveTo(k*7,0);
@@ -797,12 +990,14 @@ function drawProp(c,p,t){
       c.fillStyle='#ff5f9a';heartPath(c,-5,-20,5);c.fill();heartPath(c,6,-14,4);c.fill();heartPath(c,2,-26,4);c.fill();break;}
     case 'candyflower':{shadow(c,0,0,8,3,.2);c.rotate(sw);c.strokeStyle='#fff';c.lineWidth=3;c.beginPath();c.moveTo(0,0);c.lineTo(0,-26);c.stroke();
       ell(c,0,-34,10,10,p.col);c.strokeStyle='#fff';c.lineWidth=2.5;c.beginPath();for(let a=0;a<TAU*1.6;a+=0.3){const r=a*1.5;c.lineTo(Math.cos(a)*r,-34+Math.sin(a)*r);}c.stroke();break;}
-    case 'cloudlet':{shadow(c,0,0,18,4,.15);const by=-30+Math.sin(t*1.2+p.ph)*4;ell(c,0,by,16,10,'#ffffff');ell(c,-12,by+4,10,7,'#fff6fb');ell(c,12,by+4,10,7,'#fff6fb');break;}
+    case 'cloudlet':{shadow(c,0,0,18,4,.15);const by=-30+(body?0:Math.sin(t*1.2+p.ph)*4);ell(c,0,by,16,10,'#ffffff');ell(c,-12,by+4,10,7,'#fff6fb');ell(c,12,by+4,10,7,'#fff6fb');break;}
   }
   c.restore();
 }
 
 /* Enemies */
+const ENEMY_BOX=[-60,-92,60,16]; // around every EDRAW drawing at scale 1 (the bosses scale it with e.s)
+const EFREQ={mushroom:8,trashpus:5,fox:14,shadow:4}; // the main motion of each minion (rad/s in EDRAW)
 const EDRAW={
   mushroom(c,e,t){
     const b=Math.abs(Math.sin(t*8+e.ph))*4;shadow(c,0,0,18,6);c.translate(0,-b);
@@ -937,9 +1132,63 @@ function buildGround(I,idx){
   }
   // G1-GFX: a soft light along the top edges (baked once into the island)
   dia(0);g.strokeStyle='rgba(255,255,255,.22)';g.lineWidth=26;g.stroke();g.strokeStyle='rgba(255,255,255,.14)';g.lineWidth=60;g.stroke();
+  if(Paint.on)groundPaint(g,idx,dia);
   g.restore();
+  if(Paint.on)cliffPaint(g,I,idx,CL);
   dia(0);g.strokeStyle=I.rim;g.lineWidth=5;g.stroke();
+  if(Paint.on&&idx===0){palm(g,-AW+70,-18,1.05,-1);palm(g,AW-70,-24,0.95,1);} // two palms on the tips, outside the arena
   G.ground={c,ox:AW+P,oy:AH+P,w,h,s};
+}
+/* GAMES-GFX: the island's form, baked once with the ground: the key light across the whole island (warm top-left,
+   cool bottom-right), paper grain, a beach (Μονοκέρια) or a frost / blush rim inside the edge; shaded cliffs; palms. */
+function groundPaint(g,idx,dia){
+  const P=PALETTE[idx],lg=g.createLinearGradient(-AW,-AH,AW,AH);
+  lg.addColorStop(0,rgbaOf(P.key,0.24));lg.addColorStop(0.45,rgbaOf(P.key,0));lg.addColorStop(0.6,rgbaOf(P.shade,0));lg.addColorStop(1,rgbaOf(P.shade,0.22));
+  g.fillStyle=lg;g.fillRect(-AW,-AH,2*AW,2*AH);
+  const rim={0:['#ecd9a2',40,'#f7ecc8'],1:['#efe1b2',22,'#fff6d8'],2:['#ffffff',26,'#eef7ff'],3:['#ffe3ef',24,'#fff4f9']}[idx];
+  dia(0);g.strokeStyle=rim[0];g.globalAlpha=idx===0?0.95:0.55;g.lineWidth=rim[1]*2;g.stroke(); // inside the clip: a band along the edge
+  g.strokeStyle=rim[2];g.globalAlpha=0.8;g.lineWidth=6;g.setLineDash([22,16]);dia(0);g.stroke();g.setLineDash([]);g.globalAlpha=1;
+  g.globalAlpha=P.grain*1.6;g.fillStyle=g.createPattern(noiseTile(),'repeat');g.fillRect(-AW,-AH,2*AW,2*AH);g.globalAlpha=1;
+}
+function cliffPaint(g,I,idx,CL){
+  const P=PALETTE[idx],face=(x0,y0,x1,y1)=>{g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.lineTo(x1,y1+CL*(x1===0?1:0.6));g.lineTo(x0,y0+CL*(x0===0?1:0.6));g.closePath();};
+  for(const [x0,y0,x1,y1,k] of [[-AW,0,0,AH,0.1],[0,AH,AW,0,0.32]]){ // the left face takes the key light, the right one the shade
+    const v=g.createLinearGradient(0,0,0,AH+CL);v.addColorStop(0,'rgba(255,240,210,'+(0.26-k*0.6).toFixed(2)+')');v.addColorStop(1,rgbaOf(P.shade,k+0.18));
+    face(x0,y0,x1,y1);g.fillStyle=v;g.fill();}
+  g.strokeStyle=rgbaOf(P.ink,0.35);g.lineWidth=2.5;g.beginPath();g.moveTo(-AW,CL*0.6);g.lineTo(0,AH+CL);g.lineTo(AW,CL*0.6);g.stroke();
+}
+function palm(g,x,y,s,lean){
+  g.save();g.translate(x,y);g.scale(s,s);
+  g.fillStyle='rgba(20,30,70,.22)';g.beginPath();g.ellipse(26*lean,6,46,12,0,0,TAU);g.fill();
+  g.strokeStyle='#7a5432';g.lineWidth=11;g.lineCap='round';g.beginPath();g.moveTo(0,0);g.quadraticCurveTo(18*lean,-60,8*lean,-128);g.stroke();
+  g.strokeStyle='rgba(255,226,170,.55)';g.lineWidth=3;g.beginPath();g.moveTo(-3,-6);g.quadraticCurveTo(14*lean,-60,4*lean,-122);g.stroke(); // the trunk's lit side
+  g.strokeStyle='rgba(60,36,20,.45)';g.lineWidth=2;for(let i=1;i<9;i++){const u=i/9,tx=lerp(0,8*lean,u)+Math.sin(u*Math.PI)*12*lean,ty=-u*128;g.beginPath();g.moveTo(tx-5,ty);g.lineTo(tx+5,ty-3);g.stroke();}
+  const fr=[[-2.6,62,'#2f8a3c'],[-2,58,'#3fa048'],[-1.2,52,'#4fb456'],[-0.5,56,'#3fa048'],[0.3,60,'#2f8a3c'],[-3.1,48,'#24702f']];
+  g.translate(8*lean,-128);
+  for(const [a,l,col] of fr){g.save();g.rotate(lean>0?a:-Math.PI-a);g.fillStyle=col;g.beginPath();g.moveTo(0,0);g.quadraticCurveTo(l*0.5,-14,l,6);g.quadraticCurveTo(l*0.5,2,0,0);g.fill();
+    g.strokeStyle='rgba(20,60,30,.5)';g.lineWidth=1.5;g.beginPath();g.moveTo(0,0);g.quadraticCurveTo(l*0.5,-6,l,6);g.stroke();g.restore();}
+  g.fillStyle='#6b4a2a';for(const [cx,cy] of [[-5,4],[4,6],[0,9]]){g.beginPath();g.arc(cx,cy,5,0,TAU);g.fill();}
+  g.restore();
+}
+/* Layer 4: the foreground at the screen's corners, 1.7x the camera (leaves, kelp, frosted branches, pink wisps). */
+const FORE={};
+function foreSprite(idx){
+  if(FORE[idx])return FORE[idx];
+  const c=paintCanvas(260,200),x=c.getContext('2d'),P=PALETTE[idx];
+  x.translate(0,200);
+  if(idx===0||idx===2){for(let i=0;i<7;i++){x.save();x.rotate(-0.15-i*0.2);x.fillStyle=P.fore[i%3];x.beginPath();x.moveTo(0,0);x.quadraticCurveTo(90,-40,170-i*8,-6);x.quadraticCurveTo(90,16,0,0);x.fill();
+    x.strokeStyle='rgba(255,255,255,.18)';x.lineWidth=2;x.beginPath();x.moveTo(6,0);x.quadraticCurveTo(90,-14,160-i*8,-4);x.stroke();x.restore();}}
+  else if(idx===1){x.lineCap='round';for(let i=0;i<5;i++){x.strokeStyle=P.fore[i%3];x.lineWidth=14-i;x.beginPath();x.moveTo(20+i*26,0);for(let j=1;j<=6;j++)x.lineTo(20+i*26+Math.sin(j*0.9+i)*14,-j*28-i*6);x.stroke();}}
+  else{for(let i=0;i<5;i++){x.fillStyle=P.fore[i%3];x.globalAlpha=0.85;x.beginPath();x.ellipse(40+i*38,-30-(i%2)*30,60,34,0,0,TAU);x.fill();}x.globalAlpha=1;}
+  return(FORE[idx]=c);
+}
+function drawFore(idx){
+  if(!Paint.on)return;
+  const sp=foreSprite(idx),k=Math.min(W,H)/900,w=260*k,h=200*k,ox=reduceMotion?0:-(G.cam.x*0.7*ZOOM)%60,oy=reduceMotion?0:-((G.cam.y-60)*0.7*ZOOM)%40;
+  ctx.save();ctx.globalAlpha=0.9;
+  ctx.drawImage(sp,-30*k+ox*0.5,H-h+20*k+oy*0.4,w,h);
+  ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(sp,-30*k-ox*0.5,H-h+28*k+oy*0.4,w*0.9,h*0.9);
+  ctx.restore();Paint.fore++;
 }
 function makeProps(idx){
   const I=ISL[idx],rng=mulberry32(idx*31+5),out=[];
@@ -971,7 +1220,7 @@ function makeHeroes(){
 }
 function startIsland(i){
   G.island=i;const I=ISL[i];
-  G.enemies=[];G.projs=[];partsClear();G.fx=[];G.zones=[];G.texts=[];G.key=null;G.boss=null;G.irisUsed=false;
+  G.enemies=[];G.projs=[];partsClear();Glow.list.length=0;G.fx=[];G.zones=[];G.texts=[];G.key=null;G.boss=null;G.irisUsed=false;
   G.wave=0;G.toSpawn=0;G.phase='waves';G.shieldT=0;G.banners=[];G.bannerT=0;G.shake=0;G.flash=0;G.downHint=false;
   makeHeroes();G.active=0;
   buildGround(I,i);G.props=makeProps(i);G.amb=makeAmb(i);
@@ -1112,10 +1361,12 @@ function advanceDialog(){
 function drawPortrait(who,t){ // G1-GFX: redrawn every frame while the dialog shows (Ίριδα bobs and blinks); still with reduced motion
   const pc=$('portrait'),c=pc.getContext('2d');c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,pc.width,pc.height);
   c.scale(pc.width/96,pc.height/96);t=reduceMotion||t==null?0.4:t;
+  Paint.budget=Math.max(Paint.budget,1); // the portrait never waits for its sprite (a still portrait stays still)
   if(who==='iris')drawIris(c,48,66,0.9,t);
   else if(who==='boss'){
     const B=ISL[G.island].boss;const sc={raven:0.62,pirate:0.62,prism:0.55,devourer:0.6}[B.kind]||0.6;
-    c.translate(48,{raven:96,pirate:94,prism:96,devourer:104}[B.kind]||94);c.scale(sc,sc);Blink.on=!reduceMotion&&blinkAt(t,0);EDRAW[B.kind](c,{ph:0,face:1},reduceMotion?0.5:t);Blink.on=false;
+    c.translate(48,{raven:96,pirate:94,prism:96,devourer:104}[B.kind]||94);c.scale(sc,sc);Blink.on=!reduceMotion&&blinkAt(t,0);
+    if(Paint.on){NOSHADOW=true;paintLive(c,ENEMY_BOX,1,x=>EDRAW[B.kind](x,{ph:0,face:1},reduceMotion?0.5:t));NOSHADOW=false;}else EDRAW[B.kind](c,{ph:0,face:1},reduceMotion?0.5:t);Blink.on=false;
   }
 }
 function banner(text,dur){G.banners.push({text,dur:dur||1.8});}
@@ -1310,6 +1561,7 @@ function kill(e){
   e.dead=true;
   burst(e.x,e.y-30,e.boss?'#ffd45e':ISL[G.island].keyCol,e.boss?70:18);
   burst(e.x,e.y-30,'#ffffff',e.boss?30:6);
+  glowBurst(e.x,e.y-34,[ISL[G.island].keyCol,'#ffffff','#ffe9a8'],e.boss?40:12); // GAMES-GFX: the monster turns into sparkles
   sfx(e.boss?'boom':'pop');
   if(e.boss)bossDefeated(e);
 }
@@ -1462,10 +1714,11 @@ function updateAmb(dt){
    its own small motion. With reduced motion everything stands still. */
 const BG={key:'',c:null,px:0};
 function bgBase(I,idx){
-  const key=idx+'|'+W+'|'+H+'|'+DPR;if(BG.key===key)return BG.c;
+  const key=idx+'|'+W+'|'+H+'|'+DPR+'|'+Paint.on;if(BG.key===key)return BG.c;
   const c=document.createElement('canvas');c.width=Math.round(W*DPR);c.height=Math.round(H*DPR);const x=c.getContext('2d',{alpha:false});x.scale(DPR,DPR);
   const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,I.bg[0]);g.addColorStop(1,I.bg[1]);x.fillStyle=g;x.fillRect(0,0,W,H);
   if(idx===2){x.fillStyle='rgba(255,255,255,.7)';for(let i=0;i<60;i++){const sx=(i*137.5)%W,sy=(i*71.3)%(H*0.45);x.fillRect(sx,sy,1.6,1.6);}}
+  if(Paint.on)x.drawImage(postLayer(idx),0,0,W,H); // GAMES-GFX: vignette + paper grain baked into the sea/sky (no full-screen pass per frame)
   BG.key=key;BG.c=c;return c;
 }
 function islet(x,y,s,top,side,tree){ // a small far island with a tree or two
@@ -1529,7 +1782,16 @@ function drawEnemy(c,e,t){
   const tt=e.frozen>0?e.frozenAt:t;
   c.save();
   if(e.flash>0){c.translate(rand(-2,2),0);}
-  c.scale(e.s,e.s);Blink.on=e.frozen<=0&&blinkAt(tt,e.ph);EDRAW[e.kind](c,e,tt);Blink.on=false;c.restore();
+  Blink.on=e.frozen<=0&&blinkAt(tt,e.ph);
+  if(Paint.on){castShadow(c,0,0,e.r*0.95,e.r*0.32);c.scale(e.s,e.s);
+    if(e.boss){NOSHADOW=true;paintLive(c,ENEMY_BOX,1,x=>EDRAW[e.kind](x,e,tt));NOSHADOW=false;} // one boss at a time: painted live
+    else{ // minions share 12 frames per cycle of their main motion (their own phase picks the frame)
+      const F=EFREQ[e.kind]||6,k=Math.floor((((tt*F+e.ph)%TAU)+TAU)%TAU/TAU*12),tq=(k+0.5)/12*TAU/F,face=e.face<0?-1:1;
+      const sp=sprite('en|'+e.kind+'|'+face+'|'+(Blink.on?1:0)+'|'+k,ENEMY_BOX,e.s,u=>{NOSHADOW=true;EDRAW[e.kind](u,{ph:0,face},tq);NOSHADOW=false;});
+      if(sp)blit(c,sp);else EDRAW[e.kind](c,e,tt);
+    }}
+  else{c.scale(e.s,e.s);EDRAW[e.kind](c,e,tt);}
+  Blink.on=false;c.restore();
   const hgt=e.boss?e.r*2.6:56;
   if(e.rooted>0){c.strokeStyle='#3f9a3a';c.lineWidth=3;for(let i=0;i<4;i++){const a=i/4*TAU+t;c.beginPath();c.ellipse(0,-6-i*5,e.r*0.9,e.r*0.35,0,a,a+Math.PI*1.2);c.stroke();}c.fillStyle='#5fcf5a';ell(c,-e.r*0.6,-10,3,5);ell(c,e.r*0.7,-14,3,5);}
   if(e.frozen>0){c.fillStyle='rgba(185,238,255,.42)';rr(c,-e.r*1.3,-hgt-6,e.r*2.6,hgt+10,8);c.fill();c.strokeStyle='rgba(255,255,255,.8)';c.lineWidth=2;c.stroke();c.beginPath();c.moveTo(-e.r*0.8,-hgt+4);c.lineTo(-e.r*0.3,-hgt+18);c.stroke();}
@@ -1563,7 +1825,7 @@ function drawFxAir(c){
     if(f.k==='beam'){c.save();c.lineCap='round';c.strokeStyle='rgba(255,226,110,'+(u*0.6).toFixed(3)+')';c.lineWidth=22*u+4;c.beginPath();c.moveTo(f.x1,f.y1);c.lineTo(f.x2,f.y2);c.stroke();c.strokeStyle='rgba(255,255,230,'+u.toFixed(3)+')';c.lineWidth=7*u+2;c.stroke();c.restore();}
     else if(f.k==='bolt'){c.save();c.lineJoin='round';c.strokeStyle='rgba(255,250,170,'+u.toFixed(3)+')';c.lineWidth=7;c.beginPath();f.pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();c.strokeStyle='rgba(255,255,255,'+u.toFixed(3)+')';c.lineWidth=2.5;c.stroke();c.restore();}
   }
-  partsDraw(c);
+  partsDraw(c);glowDraw(c);
   c.font='bold 22px Comfortaa,sans-serif';c.textAlign='center';c.lineWidth=4;c.strokeStyle='rgba(20,10,40,.85)';
   for(const t of G.texts){c.globalAlpha=clamp(t.life/t.max*1.5,0,1);c.strokeText(t.txt,t.x,t.y);c.fillStyle=t.col;c.fillText(t.txt,t.x,t.y);}
   c.globalAlpha=1;c.textAlign='left';
@@ -1605,6 +1867,7 @@ function renderWorld(){
   drawIris(ctx,G.iris.x,G.iris.y+Math.sin(G.t*1.5)*6,0.75,G.t);
   drawFxAir(ctx);
   ctx.restore();
+  drawFore(idx);
   // screen overlays
   if(idx===1){ctx.fillStyle='rgba(20,90,170,.16)';ctx.fillRect(0,0,W,H);}
   drawAmb();
@@ -1620,11 +1883,12 @@ function drawSea(y,t,col1,col2){
 }
 const SKY={key:'',c:null};
 function skyBase(){ // the title sky: gradient, moon glow and stars, drawn once per screen size
-  const key=W+'|'+H+'|'+DPR;if(SKY.key===key)return SKY.c;
+  const key=W+'|'+H+'|'+DPR+'|'+Paint.on;if(SKY.key===key)return SKY.c;
   const c=document.createElement('canvas');c.width=Math.round(W*DPR);c.height=Math.round(H*DPR);const x=c.getContext('2d',{alpha:false});x.scale(DPR,DPR);
   const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1a1650');g.addColorStop(0.6,'#4a3a8f');g.addColorStop(1,'#e98bb8');x.fillStyle=g;x.fillRect(0,0,W,H);
   const mx=W*0.82,my=H*0.17,mr=Math.min(W,H)*0.06;x.drawImage(glowSprite('255,240,200',0.5),mx-mr*4,my-mr*4,mr*8,mr*8);
   x.fillStyle='#fff6dc';x.beginPath();x.arc(mx,my,mr,0,TAU);x.fill();x.fillStyle='rgba(220,200,170,.35)';x.beginPath();x.arc(mx-mr*0.3,my-mr*0.2,mr*0.22,0,TAU);x.arc(mx+mr*0.35,my+mr*0.3,mr*0.16,0,TAU);x.fill();
+  if(Paint.on)x.drawImage(postLayer('sky'),0,0,W,H);
   SKY.key=key;SKY.c=c;return c;
 }
 const SHOOT={t:-1,x:0,y:0,next:4};
@@ -1694,10 +1958,12 @@ function renderWin(dt){
 /* ---------------- LOOP ---------------- */
 let last=performance.now();
 function frame(now){
-  const dt=Math.min(0.05,(now-last)/1000);last=now;G.t+=dt;
+  const ms=now-last,dt=Math.min(0.05,ms/1000);last=now;G.t+=dt;
   ctx.setTransform(DPR,0,0,DPR,0,0);
   updateBanner(dt);
-  const s=G.state;
+  const s=G.state,pal=s==='title'||s==='flight'||s==='win'?'sky':G.island;
+  paintFrame(pal);
+  if(s==='play'&&!document.hidden)watchPaint(ms);
   if(s==='title'){renderTitle();}
   else if(s==='flight'){
     G.flight.t+=dt;partsUpdate(dt);renderFlight();
@@ -1705,6 +1971,7 @@ function frame(now){
   }
   else if(s==='win'){renderWin(dt);}
   else{
+    if(s==='play'||s==='dialog')glowUpdate(dt); // still while paused
     if(s==='play')updatePlay(dt);
     else if(s==='dialog'){updateFx(dt);updateUnis(dt);}
     updateAmb(dt);
@@ -1723,7 +1990,10 @@ if(new URLSearchParams(location.search).has('e2e'))window.__mi={get G(){return G
   get fx(){return {on:PON,max:PMAX,active:PN,peak:PSTAT.peak,reused:PSTAT.reused,spawned:Object.assign({},PSTAT.spawned)};},burst,
   // G1-GFX: the new layers (sprites made, cached backgrounds, parallax offset, ambient count, fade, ground copied 1:1)
   get gfx(){return {sprites:Object.keys(SPR).length,bg:!!BG.c,sky:!!SKY.c,parallax:BG.px,amb:G.amb.length,fade:XF.t<XF.dur,reduceMotion,
-    ground1to1:!!(G.ground&&Math.abs(G.ground.s-ZOOM*DPR)<1e-3)};}};
+    ground1to1:!!(G.ground&&Math.abs(G.ground.s-ZOOM*DPR)<1e-3)};},
+  // GAMES-GFX: the storybook paint (sprites baked and copied this frame, live paints, post layer, foreground)
+  get paint(){return {on:Paint.on,auto:Paint.auto,R:Paint.R,sprites:Paint.sprites.size,bakes:Paint.bakes,bakeMs:Math.round(Paint.bakeMs),
+    copies:Paint.copies,live:Paint.live,post:!!Paint.post,postBuilds:Paint.postBuilds,fore:Paint.fore,glows:Glow.n,glowsSpawned:Glow.spawned,ema:+Paint.ema.toFixed(1)};}};
 })();
 </script>
 </body>
