@@ -618,8 +618,8 @@ function cloudSprite(tint){ // a storybook cloud: round puffs with a clear edge,
    and get the same finish there. The finish = a warm key light from the top-left and a cool shade towards the
    bottom-right, a rim light on the lit edge and a soft ink outline of varied weight, from PALETTE (one set per
    island, plus the night sky of the title, flight and win screens). At most Paint.max bakes per frame.
-   Layers: sky + far islets (drawBg, 0.08x the camera) → island and ground → y-sorted world → foreground at the
-   screen's edges (1.7x the camera) → one cached paper-grain + vignette layer. CONFIG.storybook=false or slow frames
+   Layers: sky + far islets (drawBg, 0.08x the camera; the paper grain + vignette are baked into its cached sea/sky)
+   → island and ground → y-sorted world → foreground at the screen's edges (1.7x the camera). CONFIG.storybook=false or slow frames
    (CONFIG.slowFrameMs) keep the plain vector art. */
 const PALETTE={
   0:{key:'#fff0cf',keyA:.30,shade:'#2f4f8f',shadeA:.24,rim:'#fff6dd',rimA:.6,ink:'#1d2a44',inkA:.58,sh:'20,30,70',shA:.3,vig:'8,30,62',vigA:.26,grain:.07,fore:['#3f8f45','#2f7a3c','#1f5a2c']},
@@ -649,18 +649,18 @@ function scratch(i,w,h){
   return c;
 }
 /* The finish on a painted base (canvas pixels w x h at the top-left of c; R = pixels per world unit). */
-function finish(c,w,h,P,R,grain){
+function finish(c,w,h,P,R,grain,lite){ // lite (live paints): no rim pass, three outline offsets
   const x=c.getContext('2d');x.setTransform(1,0,0,1,0,0);
   const sil=scratch(0,w,h),s=sil.getContext('2d');s.drawImage(c,0,0,w,h,0,0,w,h);s.globalCompositeOperation='source-in';s.fillStyle=rgbaOf(P.ink,P.inkA);s.fillRect(0,0,w,h);
   const g=x.createLinearGradient(0,0,w*0.9,h);g.addColorStop(0,rgbaOf(P.key,P.keyA));g.addColorStop(0.45,rgbaOf(P.key,0));g.addColorStop(0.55,rgbaOf(P.shade,0));g.addColorStop(1,rgbaOf(P.shade,P.shadeA));
   x.globalCompositeOperation='source-atop';x.fillStyle=g;x.fillRect(0,0,w,h);
-  const rim=scratch(1,w,h),q=rim.getContext('2d');q.drawImage(c,0,0,w,h,0,0,w,h);q.globalCompositeOperation='source-in';q.fillStyle=P.rim;q.fillRect(0,0,w,h);
+  if(!lite){const rim=scratch(1,w,h),q=rim.getContext('2d');q.drawImage(c,0,0,w,h,0,0,w,h);q.globalCompositeOperation='source-in';q.fillStyle=P.rim;q.fillRect(0,0,w,h);
   q.globalCompositeOperation='destination-out';q.drawImage(c,0,0,w,h,0.85*R,0.85*R,w,h); // the lit edge: top-left, where the key light comes from
-  x.globalAlpha=P.rimA;x.drawImage(rim,0,0,w,h,0,0,w,h);x.globalAlpha=1;
+  x.globalAlpha=P.rimA;x.drawImage(rim,0,0,w,h,0,0,w,h);x.globalAlpha=1;}
   if(grain){x.globalAlpha=grain;x.fillStyle=x.createPattern(noiseTile(),'repeat');x.fillRect(0,0,w,h);x.globalAlpha=1;}
   // ink outline behind the painting, a little heavier on the shade side (bottom-right)
   x.globalCompositeOperation='destination-over';const o=Math.max(0.6,R*0.55);
-  for(const [dx,dy] of [[-0.8,-0.6],[0.7,-0.8],[-0.6,0.9],[1.25,1.25],[1.3,-0.1]])x.drawImage(sil,0,0,w,h,dx*o,dy*o,w,h);
+  for(const [dx,dy] of lite?[[-0.8,-0.6],[0.6,0.9],[1.25,1.25]]:[[-0.8,-0.6],[0.7,-0.8],[-0.6,0.9],[1.25,1.25],[1.3,-0.1]])x.drawImage(sil,0,0,w,h,dx*o,dy*o,w,h);
   x.globalCompositeOperation='source-over';
 }
 function paintScale(){ // world sprites at the screen's own scale (capped at 2 px per world unit); a resize bakes again
@@ -684,9 +684,9 @@ function blit(c,sp){const b=sp.box;c.drawImage(sp.c,b[0],b[1],b[2]-b[0],b[3]-b[1
 /* Live paint: the drawing goes into a scratch canvas at the current scale and gets the finish there (enemies, the
    dragon, the mermaid). box in drawing units around (0,0); k = the drawing's own size. */
 function paintLive(c,box,k,draw){
-  const m=c.getTransform(),R=clamp(Math.hypot(m.a,m.b)*k,0.4,2.5),w=Math.ceil((box[2]-box[0])*R),h=Math.ceil((box[3]-box[1])*R);
+  const m=c.getTransform(),R=clamp(Math.hypot(m.a,m.b)*k,0.4,1.25),w=Math.ceil((box[2]-box[0])*R),h=Math.ceil((box[3]-box[1])*R);
   const s=scratch(2,w,h),x=s.getContext('2d');x.setTransform(R,0,0,R,-box[0]*R,-box[1]*R);x.lineCap='round';x.lineJoin='round';
-  draw(x);finish(s,w,h,Paint.P,R,0);
+  draw(x);finish(s,w,h,Paint.P,R,0,true);
   c.drawImage(s,0,0,w,h,box[0]*k,box[1]*k,(box[2]-box[0])*k,(box[3]-box[1])*k);Paint.live++;
 }
 /* Soft cast shadow along the key light (towards the bottom-right): a wide faint ellipse and a smaller darker one. */
@@ -744,7 +744,6 @@ function postLayer(pal){
   x.globalAlpha=P.grain;x.fillStyle=x.createPattern(noiseTile(),'repeat');x.fillRect(0,0,c.width,c.height);x.globalAlpha=1;
   Paint.post={key,c};Paint.postBuilds++;return c;
 }
-function drawPost(pal){if(!Paint.on)return;ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(postLayer(pal),0,0);ctx.restore();}
 const Blink={on:false}; // set per creature while it draws: a short blink every few seconds
 const blinkAt=(t,ph)=>((t+ph*1.37)%3.9)<0.12;
 function eyesAngry(c,x,y,r,col){ // G1-GFX: cute and "ready to play": round eyes, a soft short brow, blush, a blink
@@ -998,6 +997,7 @@ function propDraw(c,p,t,body){
 
 /* Enemies */
 const ENEMY_BOX=[-60,-92,60,16]; // around every EDRAW drawing at scale 1 (the bosses scale it with e.s)
+const EFREQ={mushroom:8,trashpus:5,fox:14,shadow:4}; // the main motion of each minion (rad/s in EDRAW)
 const EDRAW={
   mushroom(c,e,t){
     const b=Math.abs(Math.sin(t*8+e.ph))*4;shadow(c,0,0,18,6);c.translate(0,-b);
@@ -1361,6 +1361,7 @@ function advanceDialog(){
 function drawPortrait(who,t){ // G1-GFX: redrawn every frame while the dialog shows (Ίριδα bobs and blinks); still with reduced motion
   const pc=$('portrait'),c=pc.getContext('2d');c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,pc.width,pc.height);
   c.scale(pc.width/96,pc.height/96);t=reduceMotion||t==null?0.4:t;
+  Paint.budget=Math.max(Paint.budget,1); // the portrait never waits for its sprite (a still portrait stays still)
   if(who==='iris')drawIris(c,48,66,0.9,t);
   else if(who==='boss'){
     const B=ISL[G.island].boss;const sc={raven:0.62,pirate:0.62,prism:0.55,devourer:0.6}[B.kind]||0.6;
@@ -1713,10 +1714,11 @@ function updateAmb(dt){
    its own small motion. With reduced motion everything stands still. */
 const BG={key:'',c:null,px:0};
 function bgBase(I,idx){
-  const key=idx+'|'+W+'|'+H+'|'+DPR;if(BG.key===key)return BG.c;
+  const key=idx+'|'+W+'|'+H+'|'+DPR+'|'+Paint.on;if(BG.key===key)return BG.c;
   const c=document.createElement('canvas');c.width=Math.round(W*DPR);c.height=Math.round(H*DPR);const x=c.getContext('2d',{alpha:false});x.scale(DPR,DPR);
   const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,I.bg[0]);g.addColorStop(1,I.bg[1]);x.fillStyle=g;x.fillRect(0,0,W,H);
   if(idx===2){x.fillStyle='rgba(255,255,255,.7)';for(let i=0;i<60;i++){const sx=(i*137.5)%W,sy=(i*71.3)%(H*0.45);x.fillRect(sx,sy,1.6,1.6);}}
+  if(Paint.on)x.drawImage(postLayer(idx),0,0,W,H); // GAMES-GFX: vignette + paper grain baked into the sea/sky (no full-screen pass per frame)
   BG.key=key;BG.c=c;return c;
 }
 function islet(x,y,s,top,side,tree){ // a small far island with a tree or two
@@ -1781,7 +1783,13 @@ function drawEnemy(c,e,t){
   c.save();
   if(e.flash>0){c.translate(rand(-2,2),0);}
   Blink.on=e.frozen<=0&&blinkAt(tt,e.ph);
-  if(Paint.on){castShadow(c,0,0,e.r*e.s*0.95,e.r*e.s*0.32);c.scale(e.s,e.s);NOSHADOW=true;paintLive(c,ENEMY_BOX,1,x=>EDRAW[e.kind](x,e,tt));NOSHADOW=false;}
+  if(Paint.on){castShadow(c,0,0,e.r*e.s*0.95,e.r*e.s*0.32);c.scale(e.s,e.s);
+    if(e.boss){NOSHADOW=true;paintLive(c,ENEMY_BOX,1,x=>EDRAW[e.kind](x,e,tt));NOSHADOW=false;} // one boss at a time: painted live
+    else{ // minions share 12 frames per cycle of their main motion (their own phase picks the frame)
+      const F=EFREQ[e.kind]||6,k=Math.floor((((tt*F+e.ph)%TAU)+TAU)%TAU/TAU*12),tq=(k+0.5)/12*TAU/F,face=e.face<0?-1:1;
+      const sp=sprite('en|'+e.kind+'|'+face+'|'+(Blink.on?1:0)+'|'+k,ENEMY_BOX,e.s,u=>{NOSHADOW=true;EDRAW[e.kind](u,{ph:0,face},tq);NOSHADOW=false;});
+      if(sp)blit(c,sp);else EDRAW[e.kind](c,e,tt);
+    }}
   else{c.scale(e.s,e.s);EDRAW[e.kind](c,e,tt);}
   Blink.on=false;c.restore();
   const hgt=e.boss?e.r*2.6:56;
@@ -1875,11 +1883,12 @@ function drawSea(y,t,col1,col2){
 }
 const SKY={key:'',c:null};
 function skyBase(){ // the title sky: gradient, moon glow and stars, drawn once per screen size
-  const key=W+'|'+H+'|'+DPR;if(SKY.key===key)return SKY.c;
+  const key=W+'|'+H+'|'+DPR+'|'+Paint.on;if(SKY.key===key)return SKY.c;
   const c=document.createElement('canvas');c.width=Math.round(W*DPR);c.height=Math.round(H*DPR);const x=c.getContext('2d',{alpha:false});x.scale(DPR,DPR);
   const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1a1650');g.addColorStop(0.6,'#4a3a8f');g.addColorStop(1,'#e98bb8');x.fillStyle=g;x.fillRect(0,0,W,H);
   const mx=W*0.82,my=H*0.17,mr=Math.min(W,H)*0.06;x.drawImage(glowSprite('255,240,200',0.5),mx-mr*4,my-mr*4,mr*8,mr*8);
   x.fillStyle='#fff6dc';x.beginPath();x.arc(mx,my,mr,0,TAU);x.fill();x.fillStyle='rgba(220,200,170,.35)';x.beginPath();x.arc(mx-mr*0.3,my-mr*0.2,mr*0.22,0,TAU);x.arc(mx+mr*0.35,my+mr*0.3,mr*0.16,0,TAU);x.fill();
+  if(Paint.on)x.drawImage(postLayer('sky'),0,0,W,H);
   SKY.key=key;SKY.c=c;return c;
 }
 const SHOOT={t:-1,x:0,y:0,next:4};
@@ -1969,7 +1978,6 @@ function frame(now){
     renderWorld();
     if(G.heroes.length)updateHud();
   }
-  drawPost(pal);
   if(s==='dialog'&&DLG)drawPortrait(DLG.lines[DLG.i].w,G.t);
   if(XF.t<XF.dur){XF.t+=dt;ctx.setTransform(DPR,0,0,DPR,0,0);ctx.fillStyle='rgba(20,14,46,'+Math.max(0,1-XF.t/XF.dur).toFixed(3)+')';ctx.fillRect(0,0,W,H);}
   musicTick();
