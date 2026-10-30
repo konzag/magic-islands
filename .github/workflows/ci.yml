@@ -40,7 +40,11 @@ jobs:
       - name: Install
         run: npm ci
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        # OS packages: preinstalled on the homelab runner (homelab-scripts vm/runner/ci-packages.txt),
+        # no apt there; only GitHub-hosted runners install them.
+        run: |
+          npx playwright install chromium
+          if [ "$RUNNER_ENVIRONMENT" = "github-hosted" ]; then npx playwright install-deps chromium; fi
       # TEST-STANDARD v1 §R-JS: no logic module, so the floor in .coverage-floor is the Playwright test count; it only goes up.
       - name: Coverage floor not lowered
         run: bash tools/coverage-floor-check.sh
