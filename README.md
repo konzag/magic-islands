@@ -279,13 +279,16 @@ tests/readme.spec.ts    οι εννέα ενότητες αυτού του READM
 tests/look.spec.ts      G1-GFX: όλες οι οθόνες σε 4 μεγέθη × light/dark (0 σφάλματα, axe), στρώματα, βάθος,
                         «λιγότερη κίνηση», ζωντανό πορτρέτο, όριο σωματιδίων, παλιά αποθήκευση
 tests/perf.spec.ts      μόνο για σύγκριση (PERF=1): καρέ/δευτ. και χρόνος ανά καρέ, κανονικά και CPU 4× πιο αργή
+tests/frametime.spec.ts GAMES-GRAPHICS: χρόνος καρέ με CPU 4× πιο αργή, 10 δευτ. παιχνίδι, p95 το πολύ +10 % από
+                        την παλιά εμφάνιση (και ≤ 20 ms όπου η παλιά το πετυχαίνει)· όρια στο tests/frametime.json
 tests/evidence.spec.ts  μόνο για εικόνες (EVIDENCE=<φάκελος>): όλες οι οθόνες σε 4 μεγέθη × light/dark
 tests/serve.mjs         μικρός server που μιμείται το hub (ίδιο CSP: tests/hub-csp.mjs)
 ```
 
 ```bash
 npm ci && npx playwright install chromium
-CI=1 npx playwright test   # desktop (πληκτρολόγιο) + tablet (αφή) + κινητό/κάθετο tablet για το joystick
+CI=1 npx playwright test --grep-invert @frametime   # desktop (πληκτρολόγιο) + tablet (αφή) + κινητό/κάθετο tablet
+CI=1 npx playwright test --grep @frametime --project=tablet   # χρόνος καρέ, μόνο του (όπως στο CI)
 npm run serve              # http://127.0.0.1:4173/
 ```
 

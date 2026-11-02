@@ -633,6 +633,7 @@ const PALETTE={
 const Paint={on:true,auto:false,P:PALETTE[0],R:1,max:1,budget:0,frame:0,bakes:0,bakeMs:0,live:0,copies:0,sprites:new Map(),
   post:null,postBuilds:0,fore:0,ema:0,slow:0};
 if(new URLSearchParams(location.search).has('plain'))CONFIG.storybook=false; // test hook: the plain vector art
+const KEEPLOOK=(q=>q.has('e2e')&&q.has('keeplook'))(new URLSearchParams(location.search)); // test hook (frame-time gate): no slow-device switch-off
 Paint.on=!!CONFIG.storybook;
 const rgbaOf=(hex,a)=>{const n=parseInt(hex.slice(1),16);return 'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+a+')';};
 function paintCanvas(w,h){const c=document.createElement('canvas');c.width=Math.max(1,Math.ceil(w));c.height=Math.max(1,Math.ceil(h));return c;}
@@ -733,7 +734,7 @@ function paintFrame(pal){ // once per frame: the palette of the screen, the bake
 }
 function watchPaint(ms){ // frame time while playing: the vignette and the painted look give way on a slow device
   Paint.ema=Paint.ema?lerp(Paint.ema,ms,0.05):ms;
-  if(!Paint.on)return;
+  if(!Paint.on||KEEPLOOK)return;
   Paint.slow=ms>CONFIG.slowFrameMs?Paint.slow+ms/1000:0;
   if(Paint.slow>CONFIG.slowFrameSec){Paint.on=false;Paint.auto=true;}
 }

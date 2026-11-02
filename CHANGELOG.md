@@ -1,6 +1,16 @@
 # Changelog
 
 ## Unreleased
+- **GAMES-GRAPHICS step 1 (L1-26, spec games-template docs/specs/GAMES-GRAPHICS.md §4):** new frame-time gate
+  `tests/frametime.spec.ts` in PR CI (tablet project, 1180x820 at pixel ratio 2, CPU 4x slower through CDP, 10 s of
+  play on Μονοκέρια per variant). It measures the main-thread time of each frame callback for the reference
+  (`/?e2e&keeplook&gfx=base`, the look before GAMES-GRAPHICS) and the candidate (`/?e2e&keeplook`, «Κανονικά»)
+  interleaved in the same run, and fails when the candidate p95 is more than 10 % above the reference p95, or above
+  20 ms on a machine where the reference meets 20 ms. Thresholds and the «before» numbers: `tests/frametime.json`.
+  New test hook `keeplook` (only with `e2e`): the painted look does not switch itself off on the throttled CPU
+  (otherwise the gate would measure the plain art). No visible change; save key and format unchanged.
+  `tests/evidence.spec.ts` takes `EVIDENCE_TYPE=png` (lossless) and `EVIDENCE_QUERY` (e.g. `&gfx=base`) for the
+  before / after screenshots. Test-count floor 240 → 248.
 - **GAME-STANDARD v1.3 §5a (L1-34):** the save gets the `hub` object (`schema`, `completed`, `completedAt`,
   `milestones` = `island-1`..`island-4`) for the games-hub badge «Ολοκλήρωσες». The final win keeps `{v:1,hub}` instead
   of removing the key (no island, so still a fresh start). Old saves load and get `hub` at the next key; a malformed
