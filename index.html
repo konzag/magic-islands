@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <title>Τα Μαγικά Νησιά</title>
+<meta name="description" content="Τα Μαγικά Νησιά: η Αριάνα και ο Ναπολέων πετούν με τον δράκο Ζαφείρη, βρίσκουν φίλους, μαζεύουν κλειδιά και σώζουν τη μαγεία των νησιών.">
+<meta name="robots" content="noindex,nofollow">
 <link rel="stylesheet" href="/static/fonts/comfortaa.css">
 <meta name="theme-color" content="#140e2e">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
@@ -1271,7 +1273,7 @@ function collectKey(){
   G.key=null;G.keys++;sfx('key');
   for(const h of G.heroes){h.down=false;h.hp=h.max;burst(h.x,h.y-40,'#9dffb0',20,-60);}
   updateKeys();G.phase='done';G.banners=[];$('banner').hidden=true;
-  if(G.island<3)saveProgress(G.island+1);else clearSave();
+  if(G.island<3)saveProgress(G.island+1);else finishSave();
   const lines=[{w:'iris',t:'Μπράβο! Βρήκατε το κλειδί!'},{w:'iris',t:'Ξεκλειδώσατε τη δύναμη '+I.power+'! Η ζωή σας γέμισε! 💚'}];
   if(G.island===3){lines.push({w:'iris',t:'Τα καταφέρατε! Η μαγεία γύρισε σε όλα τα νησιά!'});}
   else lines.push({w:'iris',t:'Ο Ζαφείρης μάς περιμένει. Πάμε στο επόμενο νησί!'});
@@ -1295,11 +1297,25 @@ function lose(){
 /* GAME-STANDARD §6 (no punishing loss): «Ξανά» restarts the same island; G.keys (the islands before it) stays. */
 function restart(){initAudio();startIsland(G.island);}
 /* homelab: saved progress, on this device only (localStorage; nothing is sent anywhere). It keeps the
-   furthest island reached (its keys = the islands before it), so losing never takes progress away. */
+   furthest island reached (its keys = the islands before it), so losing never takes progress away.
+   GAME-STANDARD v1.3 §5a: the save also has a `hub` object with ONLY schema, completed, completedAt, milestones
+   (`island-<n>` = the key of island n found). games-hub reads it for its badges; the game never calls the hub.
+   After the final win the save keeps only {v:1,hub}: no island, so the next game starts from the beginning. */
 const SAVE_KEY='magic-islands.progress.v1';
+const HUB_ID=/^[a-z0-9-]{1,32}$/,HUB_DATE=/^\d{4}-\d{2}-\d{2}$/,HUB_MAX=50;
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+/* an old or broken hub object: keep what is valid, nothing else */
+function hubOf(raw){const r=raw&&typeof raw==='object'?raw:{},completed=r.completed===true,list=Array.isArray(r.milestones)?r.milestones:[];
+  return {schema:1,completed,completedAt:!completed?null:HUB_DATE.test(r.completedAt)?r.completedAt:today(),
+    milestones:[...new Set(list.filter(m=>typeof m==='string'&&HUB_ID.test(m)))].slice(0,HUB_MAX)};}
+function hubAdd(h,id){if(HUB_ID.test(id)&&!h.milestones.includes(id)&&h.milestones.length<HUB_MAX)h.milestones.push(id);}
+function readRaw(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(s&&typeof s==='object'&&!Array.isArray(s))return s;}catch(e){}return null;}
+/* the hub object of the save on the device, with the islands up to `upTo` and (if `done`) the completion */
+function hubWith(upTo,done){const r=readRaw(),h=hubOf(r&&r.hub);for(let n=1;n<=upTo;n++)hubAdd(h,'island-'+n);
+  if(done&&!h.completed){h.completed=true;h.completedAt=today();}return h;}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(s&&Number.isInteger(s.island)&&s.island>0&&s.island<ISL.length)return s;}catch(e){}return null;}
-function saveProgress(i){const s=loadSave();if(s&&s.island>=i)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,island:i,keys:i}));}catch(e){}}
-function clearSave(){try{localStorage.removeItem(SAVE_KEY);}catch(e){}}
+function saveProgress(i){const s=loadSave();if(s&&s.island>=i)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,island:i,keys:i,hub:hubWith(i,false)}));}catch(e){}}
+function finishSave(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,hub:hubWith(ISL.length,true)}));}catch(e){}}
 /* homelab: light / dark look of the menus, cards and buttons (GAME-STANDARD §3a). 'auto' follows the device, the 🌓
    switch goes auto → light → dark. Its own key: the progress key above and its value never change. Nothing is
    written until the switch is pressed. */
@@ -1987,7 +2003,7 @@ setState('title');
 requestAnimationFrame(frame);
 // Test probe (Playwright only): /?e2e exposes the game state read-only by reference; normal play never sets it.
 if(new URLSearchParams(location.search).has('e2e'))window.__mi={get G(){return G;},get touchV(){return touchV;},
-  get fx(){return {on:PON,max:PMAX,active:PN,peak:PSTAT.peak,reused:PSTAT.reused,spawned:Object.assign({},PSTAT.spawned)};},burst,
+  get fx(){return {on:PON,max:PMAX,active:PN,peak:PSTAT.peak,reused:PSTAT.reused,spawned:Object.assign({},PSTAT.spawned)};},burst,hubOf,
   // G1-GFX: the new layers (sprites made, cached backgrounds, parallax offset, ambient count, fade, ground copied 1:1)
   get gfx(){return {sprites:Object.keys(SPR).length,bg:!!BG.c,sky:!!SKY.c,parallax:BG.px,amb:G.amb.length,fade:XF.t<XF.dur,reduceMotion,
     ground1to1:!!(G.ground&&Math.abs(G.ground.s-ZOOM*DPR)<1e-3)};},

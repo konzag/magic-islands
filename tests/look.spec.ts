@@ -146,7 +146,7 @@ test.describe('layers and motion (1180x820)', () => {
     await advanceTo(page, 'play');
     expect(await page.evaluate(() => window.__mi.G.island)).toBe(2);
     await keyOnHero(page); await expect.poll(() => state(page), { timeout: 5000 }).toBe('dialog');
-    expect(JSON.parse((await page.evaluate((k) => localStorage.getItem(k), SAVE_KEY))!)).toEqual({ v: 1, island: 3, keys: 3 });
+    expect(JSON.parse((await page.evaluate((k) => localStorage.getItem(k), SAVE_KEY))!)).toEqual({ v: 1, island: 3, keys: 3, hub: { schema: 1, completed: false, completedAt: null, milestones: ['island-1', 'island-2', 'island-3'] } });
     expect(problems).toEqual([]);
   });
 });

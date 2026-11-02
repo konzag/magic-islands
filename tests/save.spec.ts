@@ -1,9 +1,9 @@
 // The saved-progress contract (README «Αποθήκευση», GAME-STANDARD §5), desktop project, through the opt-in test probe
 // (`/?e2e` → window.__mi.G) and localStorage only:
-// - key `magic-islands.progress.v1`, value exactly {v:1,island:N,keys:N}: FROZEN (renaming it wipes every child's progress);
+// - key `magic-islands.progress.v1`, value {v:1,island:N,keys:N} (+ the `hub` object of GAME-STANDARD §5a, tests/hub-progress.spec.ts): FROZEN (renaming it wipes every child's progress);
 // - a reload keeps it and «Συνέχεια: <νησί> ▶» resumes the furthest island with its keys;
 // - a corrupt or out-of-range value is ignored without an error; progress never goes down;
-// - a localStorage that throws never breaks the game; the final win clears the save.
+// - a localStorage that throws never breaks the game; the final win clears the progress (only the hub object stays).
 import { expect, test } from '@playwright/test';
 import { advanceTo, G, keyOnHero, SAVE_KEY, seedSave, state, stored, watch } from './mi';
 
@@ -39,8 +39,8 @@ test('save key and format are frozen', async ({ page }) => {
   await keyOnHero(page); // island 0 key → the game saves island 1
   await expect.poll(() => stored(page), { timeout: 5000 }).not.toBeNull();
   const raw = (await stored(page))!;
-  expect(JSON.parse(raw)).toStrictEqual({ v: 1, island: 1, keys: 1 });
-  expect(raw).toBe('{"v":1,"island":1,"keys":1}');
+  expect(JSON.parse(raw)).toStrictEqual({ v: 1, island: 1, keys: 1, hub: { schema: 1, completed: false, completedAt: null, milestones: ['island-1'] } }); // + the hub object (§5a)
+  expect(raw.startsWith('{"v":1,"island":1,"keys":1,')).toBe(true); // the old fields first, unchanged
   const added = (await page.evaluate(() => Object.keys(localStorage))).filter((k) => !before.includes(k));
   expect(added.filter((k) => !/sound|mute/i.test(k))).toEqual([SAVE_KEY]); // only the hub-shell sound key may also appear
   // and the next visit offers to continue on island 1
@@ -78,7 +78,7 @@ test('progress never goes down', async ({ page }) => {
   expect(await G<number>(page, 'island')).toBe(0);
   await keyOnHero(page); // the island 0 key would save island 1
   await expect.poll(() => state(page), { timeout: 5000 }).toBe('dialog');
-  expect(JSON.parse((await stored(page))!)).toStrictEqual({ v: 1, island: 2, keys: 2 });
+  expect(JSON.parse((await stored(page))!)).toStrictEqual({ v: 1, island: 2, keys: 2 }); // not written at all
   await page.goto('/?e2e');
   await expect(page.locator('#continue-btn')).toBeVisible();
   await page.locator('#continue-btn').click();
@@ -119,7 +119,7 @@ for (const how of ['getItem/setItem/removeItem throw', 'window.localStorage itse
   });
 }
 
-test('winning the last island clears the save', async ({ page }) => {
+test('winning the last island clears the progress and keeps only the hub object', async ({ page }) => {
   test.setTimeout(90_000);
   const problems = await watch(page);
   await seedSave(page, JSON.stringify({ v: 1, island: 3, keys: 3 }));
@@ -129,7 +129,7 @@ test('winning the last island clears the save', async ({ page }) => {
   expect(await G<number>(page, 'island')).toBe(3);
   await keyOnHero(page);
   await expect.poll(() => state(page), { timeout: 5000 }).toBe('dialog');
-  expect(await stored(page)).toBeNull(); // README: «Μετά τη νίκη η πρόοδος σβήνει (νέο ξεκίνημα)»
+  expect(Object.keys(JSON.parse((await stored(page))!))).toEqual(['v', 'hub']); // README: «Μετά τη νίκη η πρόοδος σβήνει (νέο ξεκίνημα)»; §5a: the hub object stays
   await advanceTo(page, 'win');
   await page.locator('#again-btn').click();
   await expect.poll(() => state(page)).toBe('title');
