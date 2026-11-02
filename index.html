@@ -639,9 +639,12 @@ const KEEPLOOK=(q=>q.has('e2e')&&q.has('keeplook'))(new URLSearchParams(location
    the sea / sky lit by it (sun glow, a brighter horizon, deeper water further away, the sun's glitter on the sea), a
    pool of warm or cool light on the ground and the island's own shadow on the water. All of it is baked into the
    cached background and ground, or one copy of a cached shadow sprite: no new full-screen pass per frame, nothing
-   moves (so nothing new with reduced motion). Test hook (only with e2e): gfx=base = the look before GAMES-GRAPHICS. */
-const GFX={a:true,b:true,soft:0};
-(q=>{if(q.has('e2e')&&q.get('gfx')==='base'){GFX.a=false;GFX.b=false;}})(new URLSearchParams(location.search));
+   moves (so nothing new with reduced motion). Tier Β = materials instead of flat colour: grass, sand, stone and water
+   textures made with code (tileable noise) once, the first time an island is built, on small offscreen canvases, then
+   laid into the cached ground and sea as patterns. Test hooks (only with e2e): gfx=base = the look before
+   GAMES-GRAPHICS, gfx=a = tier Α only. */
+const GFX={a:true,b:true,soft:0,texMs:0,texBuilds:0,groundTexMs:0};
+(q=>{if(q.has('e2e')&&q.get('gfx')==='base'){GFX.a=false;GFX.b=false;}if(q.has('e2e')&&q.get('gfx')==='a')GFX.b=false;})(new URLSearchParams(location.search));
 /* The light of each island (and of the sky screens): sun = where it stands (fractions of the screen), col = its colour,
    sa = its strength on the sea/sky, pool = its strength on the ground, len = how long the shadows are (low sun = long),
    deep = how dark the far water / sky gets, warm = an extra warm glow over the ground (sunset). The key light of the painted look stays top-left, so every shadow falls
@@ -1168,6 +1171,7 @@ function buildGround(I,idx){
     else if(idx===2){g.strokeStyle='rgba(120,170,220,.35)';g.lineWidth=1.5;g.beginPath();g.moveTo(x,y);g.lineTo(x+rng()*20-10,y+rng()*8);g.lineTo(x+rng()*30-15,y+rng()*12);g.stroke();}
     else{g.fillStyle='rgba(255,110,160,.35)';heartPath(g,x,y,4);g.fill();}
   }
+  if(GFX.b){g.restore();texGround(g,I,idx,dia,s,CL);g.save();dia(0);g.clip();} // GAMES-GRAPHICS Β: materials
   // G1-GFX: a soft light along the top edges (baked once into the island)
   dia(0);g.strokeStyle='rgba(255,255,255,.22)';g.lineWidth=26;g.stroke();g.strokeStyle='rgba(255,255,255,.14)';g.lineWidth=60;g.stroke();
   if(Paint.on)groundPaint(g,idx,dia);
@@ -1177,6 +1181,45 @@ function buildGround(I,idx){
   dia(0);g.strokeStyle=I.rim;g.lineWidth=5;g.stroke();
   if(Paint.on&&idx===0){palm(g,-AW+70,-18,1.05,-1);palm(g,AW-70,-24,0.95,1);} // two palms on the tips, outside the arena
   G.ground={c,ox:AW+P,oy:AH+P,w,h,s};
+}
+/* GAMES-GRAPHICS Β: the material tiles. Each is a 256x256 grey tile (mid grey = no change) made from tileable value
+   noise, laid over the colours with 'soft-light' so every island keeps its own colours. Made once, all four together. */
+const TEX={};
+function texTiles(){
+  if(TEX.grass)return TEX;
+  const t0=performance.now(),N=256;
+  const lat=(n,seed)=>{const r=mulberry32(seed),a=new Float32Array(n*n);for(let i=0;i<n*n;i++)a[i]=r();return a;};
+  const sm=t=>t*t*(3-2*t);
+  const vn=(a,n,u,v)=>{const fx=u*n,fy=v*n,ix=fx|0,iy=fy|0,tx=sm(fx-ix),ty=sm(fy-iy),x0=ix%n,y0=iy%n,x1=(ix+1)%n,y1=(iy+1)%n;
+    const p=a[y0*n+x0],q=a[y0*n+x1],r=a[y1*n+x0],w=a[y1*n+x1];return p+(q-p)*tx+(r-p+(w-r-q+p)*tx)*ty;};
+  const L4=lat(4,11),L8=lat(8,12),L16=lat(16,13),L32=lat(32,14),L64=lat(64,15),L8b=lat(8,16),grain=mulberry32(17);
+  const make=f=>{const c=paintCanvas(N,N),x=c.getContext('2d'),d=x.createImageData(N,N),D=d.data;
+    for(let j=0;j<N;j++)for(let i=0;i<N;i++){const u=i/N,v=j/N,g=clamp(128+f(u,v,grain())*128,0,255)|0,o=(j*N+i)*4;D[o]=D[o+1]=D[o+2]=g;D[o+3]=255;}
+    x.putImageData(d,0,0);return c;};
+  // grass: soft patches + short blades (fine noise, a little stretched upwards) + grain
+  TEX.grass=make((u,v,r)=>(vn(L4,4,u,v)-0.5)*0.45+(vn(L16,16,u,v)-0.5)*0.3+(vn(L64,64,u,v*0.7)-0.5)*0.3+(r-0.5)*0.26);
+  // sand: fine grain + gentle wind ripples that wander
+  TEX.sand=make((u,v,r)=>(r-0.5)*0.55+(vn(L32,32,u,v)-0.5)*0.3+(vn(L8,8,u,v)-0.5)*0.3+Math.sin((u*0.6+v)*TAU*9+vn(L4,4,u,v)*5)*0.14);
+  // stone: mottled rock with dark cracks along the ridges of a noise and lighter flecks
+  TEX.stone=make((u,v,r)=>{const m=(vn(L8,8,u,v)-0.5)*0.45+(vn(L32,32,u,v)-0.5)*0.35,k=Math.abs(vn(L16,16,u,v)*2-1);return m-(k<0.06?(0.06-k)*9:0)+(r>0.985?0.35:0)+(r-0.5)*0.1;});
+  // water: caustics, the bright net that light makes through moving water (two noises crossing)
+  TEX.water=make((u,v,r)=>{const k=1-Math.abs(vn(L8,8,u,v)-vn(L8b,8,u,v))*4;return (k>0?k*k*1.0:0)-0.16+(vn(L32,32,u,v)-0.5)*0.2+(r-0.5)*0.04;});
+  GFX.texMs=performance.now()-t0;GFX.texBuilds++;return TEX;
+}
+/* A material laid into a cached canvas: pattern at one tile pixel per canvas pixel (k = canvas pixels per unit). */
+function texFill(g,tile,k,a,op){
+  const pt=g.createPattern(tile,'repeat');if(pt.setTransform)pt.setTransform(new DOMMatrix().scale(1/k));
+  g.save();g.globalCompositeOperation=op||'soft-light';g.globalAlpha=a;g.fillStyle=pt;g.fill();g.restore();
+}
+function texGround(g,I,idx,dia,s,CL){
+  const t0=performance.now(),T=texTiles();
+  const top={0:[T.grass,1],1:[T.sand,1],2:[T.stone,.55,'hard-light'],3:[T.sand,.32,'hard-light']}[idx]; // the pale ice and candy ground take it harder (soft-light barely shows on near-white)
+  dia(0);texFill(g,top[0],s,top[1],top[2]);
+  if(idx===0){g.save();dia(0);g.clip();const pt=g.createPattern(T.sand,'repeat');if(pt.setTransform)pt.setTransform(new DOMMatrix().scale(1/s));
+    g.globalCompositeOperation='soft-light';g.strokeStyle=pt;g.lineWidth=84;dia(0);g.stroke();g.restore();} // the beach band: sand
+  g.beginPath();g.moveTo(-AW,0);g.lineTo(0,AH);g.lineTo(AW,0);g.lineTo(AW,CL*0.6);g.lineTo(0,AH+CL);g.lineTo(-AW,CL*0.6);g.closePath();
+  texFill(g,T.stone,s,0.95); // the cliffs: stone
+  GFX.groundTexMs=performance.now()-t0;
 }
 /* GAMES-GRAPHICS Α: a pool of the island's light on the side the sun stands, the far side a little in shade. */
 function groundLight(g,idx){
@@ -1786,6 +1829,7 @@ function bgBase(I,idx){
   const key=idx+'|'+W+'|'+H+'|'+DPR+'|'+Paint.on;if(BG.key===key)return BG.c;
   const c=document.createElement('canvas');c.width=Math.round(W*DPR);c.height=Math.round(H*DPR);const x=c.getContext('2d',{alpha:false});x.scale(DPR,DPR);
   const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,I.bg[0]);g.addColorStop(1,I.bg[1]);x.fillStyle=g;x.fillRect(0,0,W,H);
+  if(GFX.b&&idx<2){x.beginPath();x.rect(0,0,W,H);texFill(x,texTiles().water,DPR,idx?0.62:0.45);} // GAMES-GRAPHICS Β: water
   if(GFX.a)lightSky(x,idx);
   if(idx===2){x.fillStyle='rgba(255,255,255,.7)';for(let i=0;i<60;i++){const sx=(i*137.5)%W,sy=(i*71.3)%(H*0.45);x.fillRect(sx,sy,1.6,1.6);}}
   if(Paint.on)x.drawImage(postLayer(idx),0,0,W,H); // GAMES-GFX: vignette + paper grain baked into the sea/sky (no full-screen pass per frame)
@@ -2080,7 +2124,7 @@ if(new URLSearchParams(location.search).has('e2e'))window.__mi={get G(){return G
     ground1to1:!!(G.ground&&Math.abs(G.ground.s-ZOOM*DPR)<1e-3)};},
   // GAMES-GFX: the storybook paint (sprites baked and copied this frame, live paints, post layer, foreground)
   // GAMES-GRAPHICS: tiers on, soft shadows drawn in the last frame
-  get graphics(){return {a:GFX.a,b:GFX.b,soft:GFX.soft,len:(LIGHT[G.island]||LIGHT[0]).len};},
+  get graphics(){return {a:GFX.a,b:GFX.b,soft:GFX.soft,len:(LIGHT[G.island]||LIGHT[0]).len,texMs:+GFX.texMs.toFixed(1),texBuilds:GFX.texBuilds,groundTexMs:+GFX.groundTexMs.toFixed(1)};},
   get paint(){return {on:Paint.on,auto:Paint.auto,R:Paint.R,sprites:Paint.sprites.size,bakes:Paint.bakes,bakeMs:Math.round(Paint.bakeMs),
     copies:Paint.copies,live:Paint.live,post:!!Paint.post,postBuilds:Paint.postBuilds,fore:Paint.fore,glows:Glow.n,glowsSpawned:Glow.spawned,ema:+Paint.ema.toFixed(1)};}};
 })();
