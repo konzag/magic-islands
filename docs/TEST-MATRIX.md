@@ -63,7 +63,7 @@ metrics are in the games-hub matrix.
 | rate limiting/abuse | no | | | | No endpoint of its own; the hub's limits are in games-hub |
 | security configuration | yes | yes | tests/hub-csp.mjs (the hub's game-page CSP) + tests/smoke.spec.ts §4 (0 CSP violations, no inline handlers); CI job `gitleaks` | PR CI | The headers themselves are tested in games-hub |
 | dependency scans | yes | partial | .github/dependabot.yml | weekly (Dependabot) | No `npm audit` / OSV step in CI |
-| SAST/DAST | yes | missing | | PR CI (SAST); weekly from the runner (ZAP baseline, to add) | No Semgrep/CodeQL job; no ZAP baseline against staging |
+| SAST/DAST | yes | partial | `CI / Semgrep SAST` (semgrep --config auto --error, pinned, GitHub-hosted); tests/sast.spec.ts keeps the job | PR CI | No ZAP baseline against staging (L1-19, weekly tier) |
 | penetration | no (manual) | | | | Manual only |
 | privacy | yes | yes | tests/smoke.spec.ts §4 (no external URLs), acceptance MI-25 (no requests besides the page, the hub font and the icons), tests/readme.spec.ts (no hostnames / private IPs) | PR CI; nightly on staging | |
 | database | no | | | | No server DB |
@@ -84,7 +84,7 @@ metrics are in the games-hub matrix.
 | deployment/rollback | infra: homelab-scripts | | | | Release = games-hub submodule SHA; app part: the previous release's save loads (row compatibility) |
 | configuration | yes | yes | tests/storybook.spec.ts «`?plain` (CONFIG.storybook = false)…», tests/theme.spec.ts «a bad theme value falls back…» | PR CI | Settings are the `CONFIG` constants in index.html |
 | observability | no | | | | Static page: health, metrics and X-Request-ID are games-hub's |
-| SEO | yes | missing | | | Public game page: `<html lang="el">`, `<title>`, theme-color exist, but no meta description and no test |
+| SEO | yes | yes | tests/seo.spec.ts (lang="el", title, one Greek meta description of 50-160 characters, robots noindex,nofollow like the hub pages) | PR CI | kids' pages are never indexed (hub policy); the hub also sends X-Robots-Tag |
 | analytics | no | | | | Policy: no analytics; acceptance MI-25 and tests/smoke.spec.ts §4 prove nothing third-party loads |
 | exploratory | no (manual) | | | | Needs a person |
 | ad hoc | no (manual) | | | | Needs a person |
@@ -105,5 +105,5 @@ metrics are in the games-hub matrix.
 11. concurrency (missing): concurrent users (k6/Locust) on `/magic-islands/` on staging.
 12. frontend performance (missing): Lighthouse CI budgets for `/magic-islands/`.
 13. dependency scans (partial): `npm audit` / OSV step in CI.
-14. SAST/DAST (missing): Semgrep (or CodeQL) on PRs; ZAP baseline against staging weekly.
-15. SEO (missing): meta description + a test of title, lang and description on the public page.
+14. SAST/DAST (partial): Semgrep runs on every PR since L1-20; ZAP baseline against staging weekly (L1-19).
+15. SEO: done in L1-20 (tests/seo.spec.ts).
