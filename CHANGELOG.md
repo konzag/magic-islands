@@ -1,6 +1,23 @@
 # Changelog
 
 ## Unreleased
+- **GAMES-GRAPHICS tier Α «light and shadow» (L1-26 step 2, owner 02/11: Α + Β by default, «like console games»):**
+  `LIGHT` per island (sun position and colour, shadow length, depth): Μονοκέρια sunny day, Γοργονία light from the
+  surface, Κρυσταλία pale cold morning, Αγάπη sunset with long shadows and a warm glow.
+  - Soft shadows: `shadow()` and `castShadow()` draw two copies of one cached blurred ellipse (`shadowSprite`,
+    `softShadow`): a dark contact shadow and a lighter cast shadow away from the light (no hard edge).
+  - Sea / sky (`lightSky`, baked into the cached background): depth darkening away from the light, the sun's light
+    with a long falloff (screen), the sun's core, and on Μονοκέρια the sun's glitter on the sea.
+  - Ground (`groundLight`, baked with the ground): a pool of the island's light, a shade on the far side, the
+    sunset glow; `islandShadow`: the island's soft shadow on the water under the cliffs.
+  - Nothing new per frame except the shadow copies; nothing moves (reduced motion unchanged). Save key and format
+    unchanged; no new storage key. Test hook `gfx=base` (only with `e2e`) = the look before GAMES-GRAPHICS; probe
+    `window.__mi.graphics`.
+  - The «🎨 Γραφικά: Κανονικά / Πλούσια» setting is not added yet: «Πλούσια» = tier Γ, which is not built; a switch
+    that changes nothing would confuse the kids. It comes with Γ.
+  - Tests: new `tests/graphics.spec.ts` (4 tests: soft shadows vs `gfx=base`, every island lit (canvas pixels), baked
+    = still with reduced motion + storage unchanged, sunset has the longest shadows); frame-time gate green.
+    README MI-46. Test-count floor 248 → 256.
 - **GAMES-GRAPHICS step 1 (L1-26, spec games-template docs/specs/GAMES-GRAPHICS.md §4):** new frame-time gate
   `tests/frametime.spec.ts` in PR CI (tablet project, 1180x820 at pixel ratio 2, CPU 4x slower through CDP, 10 s of
   play on Μονοκέρια per variant). It measures the main-thread time of each frame callback for the reference
