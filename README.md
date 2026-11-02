@@ -297,9 +297,10 @@ tests/look.spec.ts      G1-GFX: όλες οι οθόνες σε 4 μεγέθη �
                         «λιγότερη κίνηση», ζωντανό πορτρέτο, όριο σωματιδίων, παλιά αποθήκευση
 tests/perf.spec.ts      μόνο για σύγκριση (PERF=1): καρέ/δευτ. και χρόνος ανά καρέ, κανονικά και CPU 4× πιο αργή
 tests/graphics.spec.ts  GAMES-GRAPHICS: απαλές σκιές, φως ανά νησί (pixels), ακίνητο με «λιγότερη κίνηση», ίδια αποθήκευση,
-                        υλικά μία φορά ≤ 300 ms με CPU 4×, λεπτομέρεια στο έδαφος / νερό
+                        λεπτομέρεια (υλικό) στο έδαφος / νερό
 tests/frametime.spec.ts GAMES-GRAPHICS: χρόνος καρέ με CPU 4× πιο αργή, 10 δευτ. παιχνίδι, p95 το πολύ +10 % από
-                        την παλιά εμφάνιση (και ≤ 20 ms όπου η παλιά το πετυχαίνει)· όρια στο tests/frametime.json
+                        την παλιά εμφάνιση (και ≤ 20 ms όπου η παλιά το πετυχαίνει)· υλικά μία φορά ≤ 300 ms με CPU 4×·
+                        όρια στο tests/frametime.json
 tests/evidence.spec.ts  μόνο για εικόνες (EVIDENCE=<φάκελος>): όλες οι οθόνες σε 4 μεγέθη × light/dark
 tests/serve.mjs         μικρός server που μιμείται το hub (ίδιο CSP: tests/hub-csp.mjs)
 ```
@@ -307,7 +308,7 @@ tests/serve.mjs         μικρός server που μιμείται το hub (ί
 ```bash
 npm ci && npx playwright install chromium
 CI=1 npx playwright test --grep-invert @frametime   # desktop (πληκτρολόγιο) + tablet (αφή) + κινητό/κάθετο tablet
-CI=1 npx playwright test --grep @frametime --project=tablet   # χρόνος καρέ, μόνο του (όπως στο CI)
+CI=1 npx playwright test --grep @frametime --project=tablet --workers=1   # χρόνος καρέ + φόρτωση υλικών, μόνα τους (όπως στο CI)
 npm run serve              # http://127.0.0.1:4173/
 ```
 

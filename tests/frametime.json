@@ -5,6 +5,7 @@
   "segments": 4,
   "p95MaxMs": 20,
   "maxGrowth": 0.1,
+  "texturesMaxMs": 300,
   "absoluteGate": "only when the reference itself meets p95MaxMs on this machine; otherwise only the relative gate (candidate p95 <= reference p95 x (1 + maxGrowth))",
   "baseline": {
     "_doc": "The «before» numbers of PR 1 (no GAMES-GRAPHICS change yet), recorded for the record; the gate itself uses the reference measured in the same run.",

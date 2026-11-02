@@ -14,14 +14,14 @@
 // (FRAMETIME {...}) and to the test annotations; FRAMETIME_OUT=<file> appends them as one JSON line.
 // CI runs it in its own step, alone on the machine (tag @frametime: the main step skips it with --grep-invert), so
 // other tests running in parallel do not steal CPU from the measurement:
-//   npx playwright test --grep @frametime --project=tablet
+//   npx playwright test --grep @frametime --project=tablet --workers=1
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-declare const window: Window & { __mi: { G: any; paint: { on: boolean; auto: boolean } }; __ft: any };
+declare const window: Window & { __mi: { G: any; paint: { on: boolean; auto: boolean }; graphics: { b: boolean; texMs: number; texBuilds: number; groundTexMs: number; seaTexMs: number } }; __ft: any };
 const CFG = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'frametime.json'), 'utf8'));
 const SAVE_KEY = 'magic-islands.progress.v1';
 const state = (page: Page) => page.evaluate(() => window.__mi.G.state);
@@ -101,4 +101,39 @@ test('frame time with the CPU 4x slower: p95 within the GAMES-GRAPHICS budget @f
   expect(cand.length, 'enough candidate frames').toBeGreaterThan(30);
   expect(res.candidate.p95Ms, `candidate p95 vs reference p95 ${res.reference.p95Ms} ms + ${CFG.maxGrowth * 100} %`).toBeLessThanOrEqual(limit);
   if (absolute) expect(res.candidate.p95Ms, `p95 <= ${CFG.p95MaxMs} ms («Κανονικά»)`).toBeLessThanOrEqual(CFG.p95MaxMs);
+});
+
+// GAMES-GRAPHICS §4, tier Β: the materials are made once at load and cost ≤ texturesMaxMs (tests/frametime.json) with
+// the CPU 4x slower, at the family tablet's size (the biggest ground). Each part is timed in the page after a one-pixel
+// read, so it is the real drawing time: tiles (texMs) + laying them into the ground (groundTexMs) and the sea
+// (seaTexMs). A second island (after the flight to Γοργονία) does not make the tiles again.
+test('materials (tier Β) are made once, within the load budget with the CPU 4x slower @frametime', async ({ page }, info) => {
+  test.skip(info.project.name !== 'tablet', 'tablet project only (1180x820, pixel ratio 2: the biggest ground)');
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  const graphics = () => page.evaluate(() => window.__mi.graphics);
+  await page.goto('/?e2e');
+  await page.evaluate((k) => localStorage.removeItem(k), SAVE_KEY);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: CFG.cpuThrottle });
+  await page.goto('/?e2e&keeplook');
+  await page.locator('#start-btn').click();
+  await expect.poll(async () => (await graphics()).texBuilds, { timeout: 30_000 }).toBe(1);
+  await expect.poll(async () => (await graphics()).seaTexMs, { timeout: 30_000 }).toBeGreaterThan(0); // the sea is laid at the first frame
+  const g = await graphics();
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  const total = +(g.texMs + g.groundTexMs + g.seaTexMs).toFixed(1);
+  const line = JSON.stringify({ tilesMs: g.texMs, groundMs: g.groundTexMs, seaMs: g.seaTexMs, totalMs: total, limitMs: CFG.texturesMaxMs });
+  console.log('TEXTURES ' + line);
+  info.annotations.push({ type: 'textures', description: line });
+  expect(g.b).toBe(true);
+  expect(total, `extra load time for the materials at CPU ${CFG.cpuThrottle}x`).toBeLessThanOrEqual(CFG.texturesMaxMs);
+  await advanceTo(page, 'play');
+  await page.evaluate(() => { const G = window.__mi.G, h = G.heroes[G.active]; for (const o of G.heroes) o.hp = o.max = 1e9; G.enemies.length = 0; G.toSpawn = 0; G.phase = 'key'; G.key = { T: 'key', x: h.x, y: h.y, t: 1 }; });
+  await expect.poll(() => state(page), { timeout: 10_000 }).toBe('dialog');
+  await advanceTo(page, 'play'); // through the flight to Γοργονία: a new ground with sand, the same tiles
+  expect(await page.evaluate(() => window.__mi.G.island)).toBe(1);
+  expect((await graphics()).texBuilds).toBe(1);
+  expect(errors).toEqual([]);
 });

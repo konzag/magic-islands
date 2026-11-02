@@ -6,12 +6,12 @@
 // - the sea / sky is lit by each island's light: brighter near the sun (top-left), the far water darker;
 // - the light is baked: with reduced motion the lit background stands still; no new storage key, save unchanged.
 // Tier Β (materials):
-// - grass, sand, stone and water tiles are made with code once (all four together), ≤ 300 ms with the CPU 4x slower
-//   (tiles + laying them into the island), and not again on the next island;
+// - grass, sand, stone and water tiles: their load-time budget (≤ 300 ms, CPU 4x) is checked in tests/frametime.spec.ts
+//   (it runs alone in CI, like the frame-time gate);
 // - the ground, the cliffs and the sea get fine detail (local contrast) instead of flat colour (`gfx=a` = tier Α only).
 import { expect, test, type Page } from '@playwright/test';
 
-type Graphics = { a: boolean; b: boolean; soft: number; len: number; texMs: number; texBuilds: number; groundTexMs: number };
+type Graphics = { a: boolean; b: boolean; soft: number; len: number; texMs: number; texBuilds: number; groundTexMs: number; seaTexMs: number };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const window: Window & { __mi: { G: any; graphics: Graphics } };
 const SAVE_KEY = 'magic-islands.progress.v1';
@@ -124,34 +124,6 @@ const detail = (page: Page, x: number, y: number, w: number, h: number) => page.
   return s / n;
 }, [x, y, w, h]);
 
-test.describe('family tablet size', () => {
-  // the biggest ground to lay the materials into: 1180x820 at pixel ratio 2 (the island is baked at the screen's scale)
-  test.use({ viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2 });
-test('Β: the material tiles are made once, ≤ 300 ms with the CPU 4x slower, not again on the next island', async ({ page }) => {
-  test.setTimeout(120_000);
-  const problems = await watch(page);
-  await page.goto('/?e2e');
-  await page.evaluate((k) => localStorage.removeItem(k), SAVE_KEY);
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
-  await page.goto('/?e2e&keeplook');
-  await page.locator('#start-btn').click();
-  await expect.poll(async () => (await graphics(page)).texBuilds, { timeout: 30_000 }).toBe(1);
-  const g = await graphics(page);
-  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
-  console.log(`TEXTURES tiles ${g.texMs} ms + ground ${g.groundTexMs} ms (CPU 4x)`);
-  expect(g.b).toBe(true);
-  expect(g.texMs + g.groundTexMs, 'extra load time for the materials at CPU 4x').toBeLessThanOrEqual(300);
-  await advanceTo(page, 'play');
-  await page.evaluate(() => { const G = window.__mi.G, h = G.heroes[G.active]; for (const o of G.heroes) o.hp = o.max = 1e9; G.enemies.length = 0; G.toSpawn = 0; G.phase = 'key'; G.key = { T: 'key', x: h.x, y: h.y, t: 1 }; });
-  await expect.poll(() => state(page), { timeout: 10_000 }).toBe('dialog');
-  await advanceTo(page, 'play'); // through the flight to Γοργονία: a new ground with sand, the same tiles
-  expect(await page.evaluate(() => window.__mi.G.island)).toBe(1);
-  expect((await graphics(page)).texBuilds).toBe(1);
-  expect(problems).toEqual([]);
-});
-});
-
 /** No walking unicorns (they are placed at random) and the game paused: the same still frame in both variants. */
 const still = async (page: Page) => { await page.evaluate(() => { window.__mi.G.unis.length = 0; }); await page.keyboard.press('KeyP'); await page.waitForTimeout(300); };
 test('Β: ground, cliffs and sea get material (fine detail) instead of flat colour', async ({ page }) => {
@@ -159,15 +131,17 @@ test('Β: ground, cliffs and sea get material (fine detail) instead of flat colo
   const problems = await watch(page);
   // blocks in CSS pixels at 1280x800: open ground left of the heroes, the sea at the left edge (away from the sun)
   const blocks = { ground: [180, 330, 120, 50], sea: [4, 560, 40, 40] } as const;
+  const ground4 = [380, 440, 110, 40] as const; // Αγάπη: clear of the bobbing cloudlets and lollipops
   for (const island of [0, 1, 2, 3]) {
     await toPlay(page, '&gfx=a', island); await still(page);
-    const a = { ground: await detail(page, ...blocks.ground), sea: await detail(page, ...blocks.sea) };
+    const gb = island === 3 ? ground4 : blocks.ground;
+    const a = { ground: await detail(page, ...gb), sea: await detail(page, ...blocks.sea) };
     await toPlay(page, '', island); await still(page);
     expect((await graphics(page)).b).toBe(true);
-    const b = { ground: await detail(page, ...blocks.ground), sea: await detail(page, ...blocks.sea) };
+    const b = { ground: await detail(page, ...gb), sea: await detail(page, ...blocks.sea) };
     console.log(`DETAIL island ${island + 1}`, JSON.stringify({ a, b }));
-    expect(b.ground, `island ${island + 1}: ground material`).toBeGreaterThan(a.ground * 1.1);
-    if (island < 2) expect(b.sea, `island ${island + 1}: water`).toBeGreaterThan(a.sea * 1.1);
+    expect(b.ground, `island ${island + 1}: ground material`).toBeGreaterThan(a.ground * 1.2);
+    if (island < 2) expect(b.sea, `island ${island + 1}: water`).toBeGreaterThan(a.sea * 1.2);
   }
   expect(problems).toEqual([]);
 });
