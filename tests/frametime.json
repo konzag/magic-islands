@@ -9,6 +9,6 @@
   "baseline": {
     "_doc": "The «before» numbers of PR 1 (no GAMES-GRAPHICS change yet), recorded for the record; the gate itself uses the reference measured in the same run.",
     "local": { "machine": "owner PC (Windows, other jobs running), 2026-11-02, two runs", "referenceP95Ms": [46.1, 48.4], "candidateP95Ms": [45.0, 45.9], "referenceMeanMs": [34.36, 35.35] },
-    "ci": null
+    "ci": { "machine": "GitHub-hosted ubuntu-latest, PR #50 run 41509391577 (d155969), 2026-11-02", "referenceP95Ms": 24.2, "candidateP95Ms": 25.2, "referenceMeanMs": 18.61, "candidateMeanMs": 19.6, "note": "same code in both variants: +4 % is the run-to-run noise; 20 ms is not met before any change, so the gate is relative (+10 %)" }
   }
 }
