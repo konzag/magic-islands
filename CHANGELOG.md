@@ -1,6 +1,11 @@
 # Changelog
 
 ## Unreleased
+- **GAME-STANDARD v1.3 §5a (L1-34):** the save gets the `hub` object (`schema`, `completed`, `completedAt`,
+  `milestones` = `island-1`..`island-4`) for the games-hub badge «Ολοκλήρωσες». The final win keeps `{v:1,hub}` instead
+  of removing the key (no island, so still a fresh start). Old saves load and get `hub` at the next key; a malformed
+  object is cleaned. Key and the `v`/`island`/`keys` fields unchanged. New `tests/hub-progress.spec.ts`; README
+  «Αποθήκευση» + «Badges», MI-45.
 - **a11y (axe-core 4.14, dependabot #36):** the hero cards' accessible names start with the visible name
   (`label-content-name-mismatch`, WCAG 2.5.3): «Ναπολέων: παίξε με τον Ναπολέοντα», «Αριάνα: παίξε με την Αριάνα».
   With axe-core 4.14 the joystick axe test was red (3 projects) and is green with this change; the rule is not disabled.

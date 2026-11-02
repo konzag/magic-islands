@@ -7,7 +7,7 @@ git submodule (public, no login). There is no server code here any more: the old
 2026-10-15 (its history is in git). Never add hosts, ports, IPs or internal hostnames to this public repo.
 
 ## Standard
-The game follows **GAME-STANDARD v1.2** and is its reference game: https://github.com/konzag/games-template/blob/main/GAME-STANDARD.md
+The game follows **GAME-STANDARD v1.3** (§5a: the `hub` object in the save) and is its reference game: https://github.com/konzag/games-template/blob/main/GAME-STANDARD.md
 (copy: konzag/games-hub `docs/GAME-STANDARD.md`). Shell (§3), local-only resources and the hub's CSP (§4),
 Playwright smoke (§7). New games start from `konzag/games-template`.
 
