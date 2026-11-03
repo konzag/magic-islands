@@ -45,7 +45,7 @@ metrics are in the games-hub matrix.
 | accessibility | yes | yes | tests/axe.spec.ts, tests/keyboard.spec.ts (MI-23 focus ring + axe), tests/look.spec.ts, tests/theme.spec.ts; acceptance MI-23, MI-24 | PR CI; nightly on staging | |
 | localization/internationalization | no | | | | Greek only, one language |
 | content | yes | yes | tests/readme.spec.ts (nine README sections, unique IDs, no hostnames); acceptance MI-02 (dialog texts), MI-12, MI-14 | PR CI; nightly on staging | |
-| performance | yes | partial | tests/perf.spec.ts (frame budget, only with PERF=1) | manual | Informative only, no threshold that fails |
+| performance | yes | yes | tests/frametime.spec.ts (GAMES-GRAPHICS §4 gate: CPU 4x, 10 s play, p95 frame time vs the look before, thresholds in tests/frametime.json); tests/perf.spec.ts (informative, PERF=1) | PR CI | The 20 ms absolute limit applies only on a machine where the old look meets it (see tests/frametime.json) |
 | load | yes | partial | homelab-acceptance load/locustfile.py + load/thresholds.json «GET games-hub /magic-islands/» | manual (`npm run load:staging`) | Not scheduled weekly from the runner |
 | stress | yes | missing | | weekly from the runner (to add) | Nothing yet |
 | spike | yes | missing | | weekly from the runner (to add) | Nothing yet |
@@ -95,7 +95,7 @@ metrics are in the games-hub matrix.
 1. unit (partial): add direct tests of the pure game rules (waves, spells, damage) through `page.evaluate`.
 2. visual regression (partial): `toHaveScreenshot` baselines in git at 1280, 820x1180, 1180x820, 360, light + dark.
 3. cross-browser (partial): run the Playwright suite on Firefox and WebKit too.
-4. performance (partial): a frame-time threshold that fails, run weekly from the runner.
+4. performance (done in PR CI: tests/frametime.spec.ts); a weekly run on the runner would add trend data.
 5. load (partial): schedule the Locust games-hub run weekly from the runner VM 107.
 6. stress (missing): step load on `/magic-islands/` on staging until the budget breaks.
 7. spike (missing): sudden burst on `/magic-islands/` on staging.

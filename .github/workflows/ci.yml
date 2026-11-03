@@ -51,7 +51,11 @@ jobs:
       - name: Test count >= floor
         run: bash tools/test-count-check.sh
       - name: Playwright smoke (keyboard + touch, 0 console errors, hub CSP)
-        run: npx playwright test
+        run: npx playwright test --grep-invert @frametime
+      # GAMES-GRAPHICS §4: the frame-time gate and the materials' load budget run alone, one at a time, so nothing
+      # else disturbs the measurement (thresholds in tests/frametime.json; log lines FRAMETIME {...}, TEXTURES {...}).
+      - name: Frame-time gate (CPU 4x, p95 vs the look before) + materials load budget
+        run: npx playwright test --grep @frametime --project=tablet --workers=1
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -87,7 +91,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
       - name: Install Semgrep (pinned)

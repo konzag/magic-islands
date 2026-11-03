@@ -1,6 +1,49 @@
 # Changelog
 
 ## Unreleased
+- **GAMES-GRAPHICS tier Β «materials» (L1-26 step 3):** grass, sand, stone and water tiles (128x128, tileable
+  value noise, `texTiles`) made with code once, all four together, the first time an island is built: light flecks
+  (warm white) and dark flecks (deep blue-grey) with an alpha as strong as the noise, so every island keeps its
+  colours. Laid as patterns (one tile pixel = 2 canvas pixels, no smoothing, plain `source-over`: a blend mode such as
+  soft-light cost ~4x more) into the cached ground (top: grass / sand / frost-stone / sugar-sand; Μονοκέρια's beach
+  band: sand; all cliffs: stone) and into the cached sea of Μονοκέρια and Γοργονία (still caustics). No image files,
+  no network, nothing new per frame. Load cost at CPU 4x, 1180x820@2, each part timed after a one-pixel read so the
+  drawing is really done (`groundTexMs`, `seaTexMs`): tiles ~37 ms + ground ~66 ms + sea ~65 ms locally (budget
+  300 ms). Test hook `gfx=a` (only with `e2e`) = tier Α only; probe `window.__mi.graphics` adds `texMs`,
+  `texBuilds`, `groundTexMs`, `seaTexMs`.
+  - «🎨 Γραφικά» setting: still not added (decision explained in step 2): «Κανονικά» = Α + Β is what everyone sees;
+    the switch comes with tier Γ, when «Πλούσια» has something to show.
+  - Tests: `tests/frametime.spec.ts` +1 (@frametime: tiles once, ≤ `texturesMaxMs` 300 ms at CPU 4x on the tablet
+    size, not again on the next island; runs in the CI step that runs alone, now `--workers=1`);
+    `tests/graphics.spec.ts` +1 (ground and water get fine detail vs `gfx=a`, on a still frame). README MI-47.
+    Test-count floor 256 → 260.
+- **GAMES-GRAPHICS tier Α «light and shadow» (L1-26 step 2, owner 02/11: Α + Β by default, «like console games»):**
+  `LIGHT` per island (sun position and colour, shadow length, depth): Μονοκέρια sunny day, Γοργονία light from the
+  surface, Κρυσταλία pale cold morning, Αγάπη sunset with long shadows and a warm glow.
+  - Soft shadows: `shadow()` and `castShadow()` draw two copies of one cached blurred ellipse (`shadowSprite`,
+    `softShadow`): a dark contact shadow and a lighter cast shadow away from the light (no hard edge).
+  - Sea / sky (`lightSky`, baked into the cached background): depth darkening away from the light, the sun's light
+    with a long falloff (screen), the sun's core, and on Μονοκέρια the sun's glitter on the sea.
+  - Ground (`groundLight`, baked with the ground): a pool of the island's light, a shade on the far side, the
+    sunset glow; `islandShadow`: the island's soft shadow on the water under the cliffs.
+  - Nothing new per frame except the shadow copies; nothing moves (reduced motion unchanged). Save key and format
+    unchanged; no new storage key. Test hook `gfx=base` (only with `e2e`) = the look before GAMES-GRAPHICS; probe
+    `window.__mi.graphics`.
+  - The «🎨 Γραφικά: Κανονικά / Πλούσια» setting is not added yet: «Πλούσια» = tier Γ, which is not built; a switch
+    that changes nothing would confuse the kids. It comes with Γ.
+  - Tests: new `tests/graphics.spec.ts` (4 tests: soft shadows vs `gfx=base`, every island lit (canvas pixels), baked
+    = still with reduced motion + storage unchanged, sunset has the longest shadows); frame-time gate green.
+    README MI-46. Test-count floor 248 → 256.
+- **GAMES-GRAPHICS step 1 (L1-26, spec games-template docs/specs/GAMES-GRAPHICS.md §4):** new frame-time gate
+  `tests/frametime.spec.ts` in PR CI (tablet project, 1180x820 at pixel ratio 2, CPU 4x slower through CDP, 10 s of
+  play on Μονοκέρια per variant). It measures the main-thread time of each frame callback for the reference
+  (`/?e2e&keeplook&gfx=base`, the look before GAMES-GRAPHICS) and the candidate (`/?e2e&keeplook`, «Κανονικά»)
+  interleaved in the same run, and fails when the candidate p95 is more than 10 % above the reference p95, or above
+  20 ms on a machine where the reference meets 20 ms. Thresholds and the «before» numbers: `tests/frametime.json`.
+  New test hook `keeplook` (only with `e2e`): the painted look does not switch itself off on the throttled CPU
+  (otherwise the gate would measure the plain art). No visible change; save key and format unchanged.
+  `tests/evidence.spec.ts` takes `EVIDENCE_TYPE=png` (lossless) and `EVIDENCE_QUERY` (e.g. `&gfx=base`) for the
+  before / after screenshots. Test-count floor 240 → 248.
 - **GAME-STANDARD v1.3 §5a (L1-34):** the save gets the `hub` object (`schema`, `completed`, `completedAt`,
   `milestones` = `island-1`..`island-4`) for the games-hub badge «Ολοκλήρωσες». The final win keeps `{v:1,hub}` instead
   of removing the key (no island, so still a fresh start). Old saves load and get `hub` at the next key; a malformed

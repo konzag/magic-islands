@@ -14,7 +14,9 @@ const SIZES = [
   { tag: '360', viewport: { width: 360, height: 780 }, touch: false },
 ];
 const state = (page: Page) => page.evaluate(() => window.__mi.G.state);
-async function shot(page: Page, name: string) { await page.screenshot({ path: `${DIR}/${name}.jpg`, type: 'jpeg', quality: 80 }); }
+const PNG = process.env.EVIDENCE_TYPE === 'png'; // EVIDENCE_TYPE=png: lossless PNG instead of JPEG (q80)
+const QUERY = process.env.EVIDENCE_QUERY || ''; // e.g. '&gfx=base': the look before GAMES-GRAPHICS
+async function shot(page: Page, name: string) { await page.screenshot(PNG ? { path: `${DIR}/${name}.png`, type: 'png' } : { path: `${DIR}/${name}.jpg`, type: 'jpeg', quality: 80 }); }
 async function advanceTo(page: Page, want: string, skipFlight = true) {
   for (let i = 0; i < 300 && (await state(page)) !== want; i++) {
     if (await page.locator('#dialog').isVisible()) await page.locator('#dialog').click();
@@ -25,7 +27,7 @@ async function advanceTo(page: Page, want: string, skipFlight = true) {
 }
 async function island(page: Page, i: number) {
   await page.evaluate(([k, n]) => { if (n) localStorage.setItem(k as string, JSON.stringify({ v: 1, island: n, keys: n })); else localStorage.removeItem(k as string); }, [SAVE_KEY, i]);
-  await page.goto('/?e2e');
+  await page.goto('/?e2e' + QUERY);
   await page.locator(i ? '#continue-btn' : '#start-btn').click();
   await expect.poll(() => state(page)).toBe('dialog');
 }
@@ -42,7 +44,7 @@ test.describe('evidence screenshots', () => {
         test.setTimeout(180_000);
         await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'no-preference' });
         const tag = `${sz.tag}-${scheme}`;
-        await page.goto('/?e2e');
+        await page.goto('/?e2e' + QUERY);
         await page.waitForTimeout(1500); await shot(page, `01-title-${tag}`);
         await island(page, 0);
         await page.waitForTimeout(600); await shot(page, `02-dialog-${tag}`);
