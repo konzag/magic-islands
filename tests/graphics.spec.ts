@@ -5,9 +5,13 @@
 // - soft shadows: copies of one cached blurred sprite under heroes, props and monsters (none with gfx=base);
 // - the sea / sky is lit by each island's light: brighter near the sun (top-left), the far water darker;
 // - the light is baked: with reduced motion the lit background stands still; no new storage key, save unchanged.
+// Tier Β (materials):
+// - grass, sand, stone and water tiles: their load-time budget (≤ 300 ms, CPU 4x) is checked in tests/frametime.spec.ts
+//   (it runs alone in CI, like the frame-time gate);
+// - the ground, the cliffs and the sea get fine detail (local contrast) instead of flat colour (`gfx=a` = tier Α only).
 import { expect, test, type Page } from '@playwright/test';
 
-type Graphics = { a: boolean; b: boolean; soft: number; len: number };
+type Graphics = { a: boolean; b: boolean; soft: number; len: number; texMs: number; texBuilds: number; groundTexMs: number; seaTexMs: number };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const window: Window & { __mi: { G: any; graphics: Graphics } };
 const SAVE_KEY = 'magic-islands.progress.v1';
@@ -109,5 +113,35 @@ test('Α: each island has its own light; the sunset (Αγάπη) has the longest
   }
   expect(Math.max(...len)).toBe(len[3]);
   expect(len[3]).toBeGreaterThan(len[0] * 1.3);
+  expect(problems).toEqual([]);
+});
+
+/** Local contrast of a block: mean brightness difference between neighbouring pixels (fine detail, not shading). */
+const detail = (page: Page, x: number, y: number, w: number, h: number) => page.evaluate(([x, y, w, h]) => {
+  const cv = document.getElementById('cv') as HTMLCanvasElement, k = cv.width / innerWidth, W = Math.round(w * k), H = Math.round(h * k);
+  const d = cv.getContext('2d')!.getImageData(Math.round(x * k), Math.round(y * k), W, H).data, L = (i: number) => 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+  let s = 0, n = 0; for (let j = 0; j < H; j++) for (let i = 0; i + 1 < W; i++) { const o = (j * W + i) * 4; s += Math.abs(L(o) - L(o + 4)); n++; }
+  return s / n;
+}, [x, y, w, h]);
+
+/** No walking unicorns (they are placed at random) and the game paused: the same still frame in both variants. */
+const still = async (page: Page) => { await page.evaluate(() => { window.__mi.G.unis.length = 0; }); await page.keyboard.press('KeyP'); await page.waitForTimeout(300); };
+test('Β: ground, cliffs and sea get material (fine detail) instead of flat colour', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' }); // a still background (no glints, light shafts or drift): same frame in both
+  const problems = await watch(page);
+  // blocks in CSS pixels at 1280x800: open ground left of the heroes, the sea at the left edge (away from the sun)
+  const blocks = { ground: [180, 330, 120, 50], sea: [4, 560, 40, 40] } as const;
+  const ground4 = [380, 440, 110, 40] as const; // Αγάπη: clear of the bobbing cloudlets and lollipops
+  for (const island of [0, 1, 2, 3]) {
+    await toPlay(page, '&gfx=a', island); await still(page);
+    const gb = island === 3 ? ground4 : blocks.ground;
+    const a = { ground: await detail(page, ...gb), sea: await detail(page, ...blocks.sea) };
+    await toPlay(page, '', island); await still(page);
+    expect((await graphics(page)).b).toBe(true);
+    const b = { ground: await detail(page, ...gb), sea: await detail(page, ...blocks.sea) };
+    console.log(`DETAIL island ${island + 1}`, JSON.stringify({ a, b }));
+    expect(b.ground, `island ${island + 1}: ground material`).toBeGreaterThan(a.ground * 1.2);
+    if (island < 2) expect(b.sea, `island ${island + 1}: water`).toBeGreaterThan(a.sea * 1.2);
+  }
   expect(problems).toEqual([]);
 });

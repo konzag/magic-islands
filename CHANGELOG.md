@@ -1,6 +1,22 @@
 # Changelog
 
 ## Unreleased
+- **GAMES-GRAPHICS tier Β «materials» (L1-26 step 3):** grass, sand, stone and water tiles (128x128, tileable
+  value noise, `texTiles`) made with code once, all four together, the first time an island is built: light flecks
+  (warm white) and dark flecks (deep blue-grey) with an alpha as strong as the noise, so every island keeps its
+  colours. Laid as patterns (one tile pixel = 2 canvas pixels, no smoothing, plain `source-over`: a blend mode such as
+  soft-light cost ~4x more) into the cached ground (top: grass / sand / frost-stone / sugar-sand; Μονοκέρια's beach
+  band: sand; all cliffs: stone) and into the cached sea of Μονοκέρια and Γοργονία (still caustics). No image files,
+  no network, nothing new per frame. Load cost at CPU 4x, 1180x820@2, each part timed after a one-pixel read so the
+  drawing is really done (`groundTexMs`, `seaTexMs`): tiles ~37 ms + ground ~66 ms + sea ~65 ms locally (budget
+  300 ms). Test hook `gfx=a` (only with `e2e`) = tier Α only; probe `window.__mi.graphics` adds `texMs`,
+  `texBuilds`, `groundTexMs`, `seaTexMs`.
+  - «🎨 Γραφικά» setting: still not added (decision explained in step 2): «Κανονικά» = Α + Β is what everyone sees;
+    the switch comes with tier Γ, when «Πλούσια» has something to show.
+  - Tests: `tests/frametime.spec.ts` +1 (@frametime: tiles once, ≤ `texturesMaxMs` 300 ms at CPU 4x on the tablet
+    size, not again on the next island; runs in the CI step that runs alone, now `--workers=1`);
+    `tests/graphics.spec.ts` +1 (ground and water get fine detail vs `gfx=a`, on a still frame). README MI-47.
+    Test-count floor 256 → 260.
 - **GAMES-GRAPHICS tier Α «light and shadow» (L1-26 step 2, owner 02/11: Α + Β by default, «like console games»):**
   `LIGHT` per island (sun position and colour, shadow length, depth): Μονοκέρια sunny day, Γοργονία light from the
   surface, Κρυσταλία pale cold morning, Αγάπη sunset with long shadows and a warm glow.
