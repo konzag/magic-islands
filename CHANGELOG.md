@@ -1,6 +1,10 @@
 # Changelog
 
 ## Unreleased
+- NIGHT-2 (2026-11-10): CodeQL (`.github/workflows/codeql.yml`: javascript-typescript, which reads the inline
+  script of index.html, and actions; buildless, security-extended, GitHub-hosted, actions pinned by SHA) next to
+  Semgrep + Gitleaks; `tests/codeql-workflow.spec.ts` keeps it that way. README row MI-48 for the page head and noindex.
+  The game does not change.
 - **GAMES-GRAPHICS tier Β «materials» (L1-26 step 3):** grass, sand, stone and water tiles (128x128, tileable
   value noise, `texTiles`) made with code once, all four together, the first time an island is built: light flecks
   (warm white) and dark flecks (deep blue-grey) with an alpha as strong as the noise, so every island keeps its
