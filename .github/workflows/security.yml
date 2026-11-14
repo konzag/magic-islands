@@ -11,10 +11,6 @@ on:
     branches: [staging, main]
   workflow_dispatch:
 
-concurrency:
-  group: security-${{ github.ref }}
-  cancel-in-progress: true
-
 permissions:
   contents: read
 
