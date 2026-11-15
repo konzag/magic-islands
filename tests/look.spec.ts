@@ -7,6 +7,7 @@
 // - the dialog portrait is alive; the particle pool keeps its cap; an old save still loads with the same key and format.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { advanceTo } from './mi'; // bounded clicks: tests/advance.spec.ts
 
 type Gfx = { sprites: number; bg: boolean; sky: boolean; parallax: number; amb: number; fade: boolean; reduceMotion: boolean; ground1to1: boolean };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,14 +26,6 @@ async function watch(page: Page) {
 async function axeSerious(page: Page, where: string) {
   const r = await new AxeBuilder({ page }).include(where).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   return r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
-}
-async function advanceTo(page: Page, want: string, skipFlight = true) {
-  for (let i = 0; i < 300 && (await state(page)) !== want; i++) {
-    if (await page.locator('#dialog').isVisible()) await page.locator('#dialog').click();
-    else if (skipFlight && (await page.locator('#flight-skip').isVisible())) await page.locator('#flight-skip').click();
-    else await page.waitForTimeout(100);
-  }
-  expect(await state(page)).toBe(want);
 }
 async function island(page: Page, i: number) {
   await page.evaluate(([k, n]) => { if (n) localStorage.setItem(k as string, JSON.stringify({ v: 1, island: n, keys: n })); else localStorage.removeItem(k as string); }, [SAVE_KEY, i]);
