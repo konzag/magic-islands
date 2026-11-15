@@ -10,6 +10,7 @@
 //   (it runs alone in CI, like the frame-time gate);
 // - the ground, the cliffs and the sea get fine detail (local contrast) instead of flat colour (`gfx=a` = tier Α only).
 import { expect, test, type Page } from '@playwright/test';
+import { advanceTo } from './mi'; // bounded clicks: tests/advance.spec.ts
 
 type Graphics = { a: boolean; b: boolean; soft: number; len: number; texMs: number; texBuilds: number; groundTexMs: number; seaTexMs: number };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,14 +28,6 @@ async function watch(page: Page) {
 }
 const state = (page: Page) => page.evaluate(() => window.__mi.G.state);
 const graphics = (page: Page) => page.evaluate(() => window.__mi.graphics);
-async function advanceTo(page: Page, want: string) {
-  for (let i = 0; i < 300 && (await state(page)) !== want; i++) {
-    if (await page.locator('#dialog').isVisible()) await page.locator('#dialog').click();
-    else if (await page.locator('#flight-skip').isVisible()) await page.locator('#flight-skip').click();
-    else await page.waitForTimeout(100);
-  }
-  expect(await state(page)).toBe(want);
-}
 async function toPlay(page: Page, query = '', island = 0) {
   await page.goto(`/?e2e${query}`);
   await page.evaluate(([k, n]) => {

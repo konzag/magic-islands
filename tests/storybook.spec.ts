@@ -7,6 +7,7 @@
 // - the foreground layer is drawn at the screen's corners on the islands;
 // - 0 console errors / CSP violations.
 import { expect, test, type Page } from '@playwright/test';
+import { advanceTo } from './mi'; // bounded clicks: tests/advance.spec.ts
 
 type Paint = {
   on: boolean; auto: boolean; R: number; sprites: number; bakes: number; bakeMs: number; copies: number; live: number;
@@ -26,14 +27,6 @@ async function watch(page: Page) {
 }
 const state = (page: Page) => page.evaluate(() => window.__mi.G.state);
 const paint = (page: Page) => page.evaluate(() => window.__mi.paint);
-async function advanceTo(page: Page, want: string) {
-  for (let i = 0; i < 300 && (await state(page)) !== want; i++) {
-    if (await page.locator('#dialog').isVisible()) await page.locator('#dialog').click();
-    else if (await page.locator('#flight-skip').isVisible()) await page.locator('#flight-skip').click();
-    else await page.waitForTimeout(100);
-  }
-  expect(await state(page)).toBe(want);
-}
 async function toPlay(page: Page, query = '', island = 0) {
   await page.goto(`/?e2e${query}`);
   await page.evaluate(([n]) => {

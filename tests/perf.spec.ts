@@ -6,19 +6,12 @@
 // slowed down 4x (a mid tablet).
 import fs from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
+import { advanceTo } from './mi'; // bounded clicks: tests/advance.spec.ts
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const window: Window & { __mi: { G: any }; __perf: any };
 const SAVE_KEY = 'magic-islands.progress.v1';
 const state = (page: Page) => page.evaluate(() => window.__mi.G.state);
-async function advanceTo(page: Page, want: string) {
-  for (let i = 0; i < 300 && (await state(page)) !== want; i++) {
-    if (await page.locator('#dialog').isVisible()) await page.locator('#dialog').click();
-    else if (await page.locator('#flight-skip').isVisible()) await page.locator('#flight-skip').click();
-    else await page.waitForTimeout(100);
-  }
-  expect(await state(page)).toBe(want);
-}
 async function measure(page: Page, ms: number, keys: string[]) {
   await page.evaluate(() => { const P = window.__perf; P.list = []; P.on = true; P.t0 = performance.now(); });
   const end = Date.now() + ms; let i = 0;
