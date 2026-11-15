@@ -19,6 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
+import { advanceTo } from './mi'; // bounded clicks: tests/advance.spec.ts
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const window: Window & { __mi: { G: any; paint: { on: boolean; auto: boolean }; graphics: { b: boolean; texMs: number; texBuilds: number; groundTexMs: number; seaTexMs: number } }; __ft: any };
@@ -26,14 +27,6 @@ const CFG = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(impo
 const SAVE_KEY = 'magic-islands.progress.v1';
 const state = (page: Page) => page.evaluate(() => window.__mi.G.state);
 
-async function advanceTo(page: Page, want: string) {
-  for (let i = 0; i < 300 && (await state(page)) !== want; i++) {
-    if (await page.locator('#dialog').isVisible()) await page.locator('#dialog').click();
-    else if (await page.locator('#flight-skip').isVisible()) await page.locator('#flight-skip').click();
-    else await page.waitForTimeout(100);
-  }
-  expect(await state(page)).toBe(want);
-}
 
 /** One segment: load the variant at full speed, get to play, then slow the CPU down and play for `ms`. */
 async function segment(page: Page, cdp: { send: (m: string, p?: object) => Promise<unknown> }, query: string, ms: number) {

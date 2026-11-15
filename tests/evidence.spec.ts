@@ -2,6 +2,7 @@
 //   EVIDENCE=../.claude/GAME/evidence/2026-10-22-gfx-magic-islands/before npx playwright test tests/evidence.spec.ts --project=desktop
 // Four sizes (1280, 1180x820 touch, 820x1180, 360) x light + dark colour scheme (the game has one night look).
 import { expect, test, type Page } from '@playwright/test';
+import { advanceTo } from './mi'; // bounded clicks: tests/advance.spec.ts
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const window: Window & { __mi: { G: any } };
@@ -17,14 +18,6 @@ const state = (page: Page) => page.evaluate(() => window.__mi.G.state);
 const PNG = process.env.EVIDENCE_TYPE === 'png'; // EVIDENCE_TYPE=png: lossless PNG instead of JPEG (q80)
 const QUERY = process.env.EVIDENCE_QUERY || ''; // e.g. '&gfx=base': the look before GAMES-GRAPHICS
 async function shot(page: Page, name: string) { await page.screenshot(PNG ? { path: `${DIR}/${name}.png`, type: 'png' } : { path: `${DIR}/${name}.jpg`, type: 'jpeg', quality: 80 }); }
-async function advanceTo(page: Page, want: string, skipFlight = true) {
-  for (let i = 0; i < 300 && (await state(page)) !== want; i++) {
-    if (await page.locator('#dialog').isVisible()) await page.locator('#dialog').click();
-    else if (skipFlight && (await page.locator('#flight-skip').isVisible())) await page.locator('#flight-skip').click();
-    else await page.waitForTimeout(100);
-  }
-  expect(await state(page)).toBe(want);
-}
 async function island(page: Page, i: number) {
   await page.evaluate(([k, n]) => { if (n) localStorage.setItem(k as string, JSON.stringify({ v: 1, island: n, keys: n })); else localStorage.removeItem(k as string); }, [SAVE_KEY, i]);
   await page.goto('/?e2e' + QUERY);

@@ -1,8 +1,8 @@
-// Shared helpers for save.spec.ts, flow.spec.ts and axe.spec.ts (not a spec itself: testMatch is *.spec.ts).
+// Shared helpers for the specs (not a spec itself: testMatch is *.spec.ts); advanceTo is the one story-walker for all.
 // Everything goes through the opt-in test probe (`/?e2e` → window.__mi.G, read by reference) and localStorage;
 // index.html is never changed for the tests.
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Page } from '@playwright/test';
+import { errors, expect, type Page } from '@playwright/test';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const window: Window & { __mi: { G: any } };
@@ -33,11 +33,22 @@ export async function seedSave(page: Page, raw: string | null) {
   }, [SAVE_KEY, raw]);
 }
 
+/** A click on a target the game may hide at any moment: bounded, and a timeout only means «look again». The game ends
+ *  a skipped flight on its next frame, so #flight-skip can be visible at the check and gone for good at the click;
+ *  an unbounded click() then waits until the test timeout (main CI 2026-11-11, tests/advance.spec.ts). */
+async function clickIfStill(page: Page, sel: string) {
+  try {
+    await page.locator(sel).click({ timeout: 1500 });
+  } catch (e) {
+    if (!(e instanceof errors.TimeoutError)) throw e;
+  }
+}
+
 /** Through the story dialogs (and the dragon flight, if `skipFlight`) until the game is in `want`. */
 export async function advanceTo(page: Page, want: string, skipFlight = true) {
   for (let i = 0; i < 300 && (await state(page)) !== want; i++) {
-    if (await page.locator('#dialog').isVisible()) await page.locator('#dialog').click();
-    else if (skipFlight && (await page.locator('#flight-skip').isVisible())) await page.locator('#flight-skip').click();
+    if (await page.locator('#dialog').isVisible()) await clickIfStill(page, '#dialog');
+    else if (skipFlight && (await page.locator('#flight-skip').isVisible())) await clickIfStill(page, '#flight-skip');
     else await page.waitForTimeout(100);
   }
   expect(await state(page)).toBe(want);

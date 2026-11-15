@@ -7,6 +7,7 @@
 // - 0 console errors / CSP violations at 1280, 1180x820, 820x1180 and 360 wide, light + dark colour scheme.
 // Runs once per viewport inside the desktop project (the viewports are set here).
 import { expect, test, type Page } from '@playwright/test';
+import { advanceTo } from './mi'; // bounded clicks: tests/advance.spec.ts
 
 type Fx = { on: boolean; max: number; active: number; peak: number; reused: number; spawned: Record<string, number> };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,14 +31,6 @@ const state = (page: Page) => page.evaluate(() => window.__mi.G.state);
 const fx = (page: Page) => page.evaluate(() => window.__mi.fx);
 
 /** Advance dialogs (and, if allowed, the flight) until the game reaches `want`. */
-async function advanceTo(page: Page, want: string, skipFlight = true) {
-  for (let i = 0; i < 300 && (await state(page)) !== want; i++) {
-    if (await page.locator('#dialog').isVisible()) await page.locator('#dialog').click();
-    else if (skipFlight && (await page.locator('#flight-skip').isVisible())) await page.locator('#flight-skip').click();
-    else await page.waitForTimeout(100);
-  }
-  expect(await state(page)).toBe(want);
-}
 
 async function toPlay(page: Page) {
   await page.goto('/?e2e');
