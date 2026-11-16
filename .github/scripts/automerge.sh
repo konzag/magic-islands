@@ -4,9 +4,9 @@
 #   REPO=owner/name  SHA=<CI head sha>  BRANCH=<CI head branch>  GH_TOKEN=<workflow token>
 #
 # 1. Open PRs into `staging` whose head is SHA are merged through the API, but only when EVERY check run
-#    and commit status on SHA is green (dependabot major bumps are left for a human). After a merge, CI is
-#    dispatched on `staging` (merges made with GITHUB_TOKEN do not trigger push workflows), so the deployed
-#    staging commit gets its own CI status for the infra deploy gate.
+#    and commit status on SHA is green (dependabot major bumps are left for a human). After a merge, CI, Security
+#    and CodeQL are dispatched on `staging` (merges made with GITHUB_TOKEN do not trigger push workflows), so the
+#    staging commit gets its own results (tests/automerge-script.spec.ts).
 # 2. After a merge into staging (or green CI on a staging push), make sure a "staging -> main" release PR exists. Merging it is the
 #    owner's one click (GO); nothing here ever merges into main. Its body carries release notes grouped from the
 #    conventional-commit subjects in main...staging, refreshed whenever staging moves.
@@ -92,11 +92,22 @@ main() {
     --jq ".[] | select(.headRefOid == \"$SHA\" and (.isDraft | not)) | [.number, .author.login, .title] | @tsv")
 
   if [[ $merged == 1 ]]; then
-    gh workflow run ci.yml -R "$REPO" --ref staging
-    echo "dispatched CI on staging"
-    # The dispatched run was started with GITHUB_TOKEN, so its completion does NOT fire workflow_run again:
-    # open the release PR now; its checks show the staging CI result before the owner clicks merge.
+    # All three runs are dispatched even if one dispatch fails; a failed dispatch fails the job after the release PR.
+    # They are the only CI/Security/CodeQL results the staging commit (= the release PR head) gets: the workflows
+    # do not run on PRs into main (a pull_request run of the bot's release PR waits in action_required).
+    local wf dispatch_failed=0
+    for wf in ci.yml security.yml codeql.yml; do
+      if gh workflow run "$wf" -R "$REPO" --ref staging; then
+        echo "dispatched $wf on staging"
+      else
+        echo "::error::dispatch of $wf on staging failed: the new staging commit has no $wf run"
+        dispatch_failed=1
+      fi
+    done
+    # The dispatched runs were started with GITHUB_TOKEN, so their completion does NOT fire workflow_run again:
+    # open the release PR now.
     ensure_release_pr
+    return "$dispatch_failed"
   elif [[ "$BRANCH" == "staging" ]] && all_green "$SHA"; then
     ensure_release_pr
   fi

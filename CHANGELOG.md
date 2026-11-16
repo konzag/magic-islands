@@ -1,6 +1,12 @@
 # Changelog
 
 ## Unreleased
+- Release PR without a click (owner option (a), 16/11): CI, Security and CodeQL run on `pull_request` into
+  `staging` only. The bot's release PR (staging → main) got approval-gated `pull_request` runs
+  (`action_required`, #58/#61); main's ruleset `main-protect` now needs no checks. After each merge into staging
+  `automerge.sh` dispatches `ci.yml`, `security.yml` and `codeql.yml` on staging (all three tried, a failed
+  dispatch fails the job). New `tests/automerge-script.spec.ts` (fake `gh`), workflow spec tests updated; test floor
+  286 -> 298. The game does not change.
 - EL + EN shell (owner 02/11, Block 7): `I18N` table (`el` / `en`) and `Lang` in the one script; «EN» / «ΕΛ» button
   next to 🌓 on the title and pause cards; every `[data-t]` text and `[data-ta]` aria-label, the 🌓 labels and
   «Συνέχεια: <νησί> ▶» follow the language; `<html lang>` follows it; the story parts (dialog, flight text, banner,
