@@ -199,6 +199,7 @@ body.touch .spell .ic{font-size:24px;}
 .big-btn.alt:active{box-shadow:0 2px 0 var(--winter-deep);}
 /* homelab: the 🌓 switch (device / light / dark) on the title and pause cards; ≥ 44 px like every shell button target */
 .icon-btn.theme-btn{width:52px;height:52px;font-size:24px;}
+.icon-btn.lang-btn{width:52px;height:52px;font-size:18px;font-weight:700;font-family:var(--font);}
 /* homelab: the hidden attribute must win over .screen{display:grid} (overlays blocked clicks) */
 [hidden]{display:none!important;}
 </style>
@@ -211,25 +212,25 @@ body.touch .spell .ic{font-size:24px;}
   <div id="hud" hidden>
     <div id="joyzone" hidden><div id="joy"><i></i></div></div>
     <div class="hud-top">
-      <div class="heroes">
+      <div class="heroes" lang="el">
         <button class="hero-card nap" id="card0" aria-label="Ναπολέων: παίξε με τον Ναπολέοντα"><span class="hc-name">🌸 Ναπολέων <small id="st0"></small></span><span class="bar"><i id="hp0"></i></span></button>
         <button class="hero-card ari" id="card1" aria-label="Αριάνα: παίξε με την Αριάνα"><span class="hc-name">❄️ Αριάνα <small id="st1"></small></span><span class="bar"><i id="hp1"></i></span></button>
       </div>
-      <div class="isl"><b id="isl-name">Μονοκέρια</b><span id="wave">Κύμα 1/3</span>
+      <div class="isl" lang="el"><b id="isl-name">Μονοκέρια</b><span id="wave">Κύμα 1/3</span>
         <div id="bossbar" hidden><span id="boss-name"></span><span class="bar"><i id="boss-hp"></i></span></div>
       </div>
       <div class="right">
-        <div id="keys" aria-label="Κλειδιά"></div>
+        <div id="keys" aria-label="Κλειδιά" data-ta="keys"></div>
         <div class="icon-row">
-          <button class="icon-btn" id="snd" aria-label="Ήχος">🔊</button>
-          <button class="icon-btn" id="pause-btn" aria-label="Παύση">⏸</button>
-          <button class="icon-btn" id="full-btn" aria-label="Πλήρης οθόνη (F)">⛶</button>
-          <a class="icon-btn" id="home-btn" href="/" aria-label="Πίσω στα παιχνίδια">🏠</a>
+          <button class="icon-btn" id="snd" aria-label="Ήχος" data-ta="sound">🔊</button>
+          <button class="icon-btn" id="pause-btn" aria-label="Παύση" data-ta="pause">⏸</button>
+          <button class="icon-btn" id="full-btn" aria-label="Πλήρης οθόνη (F)" data-ta="full">⛶</button>
+          <a class="icon-btn" id="home-btn" href="/" aria-label="Πίσω στα παιχνίδια" data-ta="home">🏠</a>
         </div>
       </div>
     </div>
-    <div id="banner" hidden></div>
-    <div id="spellbar">
+    <div id="banner" hidden lang="el"></div>
+    <div id="spellbar" lang="el">
       <button class="spell" data-k="0"><span class="key">1</span><span class="ic"></span><span class="nm"></span></button>
       <button class="spell" data-k="1"><span class="key">2</span><span class="ic"></span><span class="nm"></span></button>
       <button class="spell" data-k="2"><span class="key">3</span><span class="ic"></span><span class="nm"></span></button>
@@ -239,65 +240,67 @@ body.touch .spell .ic{font-size:24px;}
     </div>
   </div>
 
-  <div id="dialog" hidden>
+  <div id="dialog" hidden lang="el">
     <canvas id="portrait" width="176" height="176"></canvas>
     <div class="dlg-body"><div id="dlg-who"></div><div id="dlg-text"></div></div>
-    <button id="dlg-next" aria-label="Συνέχεια">▶</button>
+    <button id="dlg-next" aria-label="Συνέχεια" data-ta="next">▶</button>
   </div>
 
   <section id="title" class="screen">
     <div class="card">
       <h1 class="logo">Τα Μαγικά Νησιά<span class="spk a" aria-hidden="true">✦</span><span class="spk b" aria-hidden="true">✦</span></h1>
-      <p>Ένας κακός θέλει να πάρει όλη τη μαγεία από τα 4 νησιά. Δύο πνεύματα πετάνε με τον δράκο τους για να τη σώσουν!</p>
+      <p data-t="intro">Ένας κακός θέλει να πάρει όλη τη μαγεία από τα 4 νησιά. Δύο πνεύματα πετάνε με τον δράκο τους για να τη σώσουν!</p>
       <div class="duo">
-        <span class="chip nap">🌸 Ναπολέων · νερό, ήλιος, φύση</span>
-        <span class="chip ari">❄️ Αριάνα · καιρός, χιόνι, πάγος</span>
-        <span class="chip dr">🐉 Ζαφείρης ο δράκος</span>
+        <span class="chip nap" data-t="chipNap">🌸 Ναπολέων · νερό, ήλιος, φύση</span>
+        <span class="chip ari" data-t="chipAri">❄️ Αριάνα · καιρός, χιόνι, πάγος</span>
+        <span class="chip dr" data-t="chipDr">🐉 Ζαφείρης ο δράκος</span>
       </div>
       <div class="controls" id="ctl-keys">
-        <kbd>← ↑ → ↓</kbd><span>κίνηση</span>
-        <kbd>1 2 3 4</kbd><span>ξόρκια</span>
-        <kbd>Space</kbd><span>η Ίριδα βοηθάει (μία φορά σε κάθε νησί)</span>
-        <kbd>Q</kbd><span>αλλαγή ήρωα</span>
-        <kbd>P · M · F</kbd><span>παύση · ήχος · πλήρης οθόνη</span>
+        <kbd>← ↑ → ↓</kbd><span data-t="ctlMove">κίνηση</span>
+        <kbd>1 2 3 4</kbd><span data-t="ctlSpells">ξόρκια</span>
+        <kbd>Space</kbd><span data-t="ctlIris">η Ίριδα βοηθάει (μία φορά σε κάθε νησί)</span>
+        <kbd>Q</kbd><span data-t="ctlSwap">αλλαγή ήρωα</span>
+        <kbd>P · M · F</kbd><span data-t="ctlPMF">παύση · ήχος · πλήρης οθόνη</span>
       </div>
       <div class="btn-row">
         <button class="big-btn alt" id="continue-btn" hidden>Συνέχεια ▶</button>
-        <button class="big-btn" id="start-btn">Ξεκινάμε! ✨</button>
+        <button class="big-btn" id="start-btn" data-t="start">Ξεκινάμε! ✨</button>
         <button class="icon-btn theme-btn" id="theme-btn" aria-label="Χρώματα: όπως η συσκευή">🌓</button>
+        <button class="icon-btn lang-btn" id="lang-btn" aria-label="English">EN</button>
       </div>
-      <a class="home-link" href="/">🏠 Πίσω στα παιχνίδια</a>
+      <a class="home-link" href="/" data-t="homeLink">🏠 Πίσω στα παιχνίδια</a>
     </div>
   </section>
 
-  <div id="flight-text" hidden></div>
-  <button id="flight-skip" hidden>Συνέχεια ▶</button>
+  <div id="flight-text" hidden lang="el"></div>
+  <button id="flight-skip" hidden data-t="next">Συνέχεια ▶</button>
 
   <section id="lose" class="screen" hidden>
     <div class="card">
-      <h2>Ωχ! Κουραστήκαμε…</h2>
-      <p>Ο Ναπολέων και η Αριάνα αποκοιμήθηκαν. Ο Ζαφείρης τους ξυπνάει για να ξαναπροσπαθήσουν στο ίδιο νησί. Τα κλειδιά σας μένουν! 🗝️</p>
-      <button class="big-btn" id="retry-btn">Ξανά από την αρχή 🐉</button>
+      <h2 data-t="loseH">Ωχ! Κουραστήκαμε…</h2>
+      <p data-t="loseP">Ο Ναπολέων και η Αριάνα αποκοιμήθηκαν. Ο Ζαφείρης τους ξυπνάει για να ξαναπροσπαθήσουν στο ίδιο νησί. Τα κλειδιά σας μένουν! 🗝️</p>
+      <button class="big-btn" id="retry-btn" data-t="retry">Ξανά από την αρχή 🐉</button>
     </div>
   </section>
 
   <section id="win" class="screen" hidden>
     <div class="card">
-      <h1>Νικήσατε!</h1>
-      <p>Ο Μαγοφάγος έφυγε για πάντα και η μαγεία γύρισε σε όλα τα νησιά. Όλοι οι φίλοι σας ήρθαν να γιορτάσουν!</p>
-      <button class="big-btn" id="again-btn">Παίξτε ξανά 🎉</button>
+      <h1 data-t="winH">Νικήσατε!</h1>
+      <p data-t="winP">Ο Μαγοφάγος έφυγε για πάντα και η μαγεία γύρισε σε όλα τα νησιά. Όλοι οι φίλοι σας ήρθαν να γιορτάσουν!</p>
+      <button class="big-btn" id="again-btn" data-t="again">Παίξτε ξανά 🎉</button>
     </div>
   </section>
 
   <section id="paused" class="screen" hidden>
     <div class="card">
-      <h2>Παύση</h2>
-      <p>Πάρτε μια ανάσα. Ο Ζαφείρης περιμένει!</p>
+      <h2 data-t="pauseH">Παύση</h2>
+      <p data-t="pauseP">Πάρτε μια ανάσα. Ο Ζαφείρης περιμένει!</p>
       <div class="btn-row">
-        <button class="big-btn" id="resume-btn">Συνέχεια ▶</button>
+        <button class="big-btn" id="resume-btn" data-t="next">Συνέχεια ▶</button>
         <button class="icon-btn theme-btn" id="theme-btn-pause" aria-label="Χρώματα: όπως η συσκευή">🌓</button>
+        <button class="icon-btn lang-btn" id="lang-btn-pause" aria-label="English">EN</button>
       </div>
-      <a class="home-link" href="/">🏠 Πίσω στα παιχνίδια</a>
+      <a class="home-link" href="/" data-t="homeLink">🏠 Πίσω στα παιχνίδια</a>
     </div>
   </section>
 </main>
@@ -1424,18 +1427,59 @@ const Theme={
   mqDark:matchMedia('(prefers-color-scheme: dark)'),
   pick:'auto',
   icons:{auto:'🌓',light:'☀️',dark:'🌙'},
-  labels:{auto:'Χρώματα: όπως η συσκευή',light:'Χρώματα: φωτεινά',dark:'Χρώματα: σκοτεινά'},
   load(){try{const t=localStorage.getItem(THEME_KEY);if(THEMES.includes(t))this.pick=t;}catch(e){}},
   apply(){
     document.documentElement.dataset.theme=this.pick==='auto'?(this.mqDark.matches?'dark':'light'):this.pick;
-    for(const b of document.querySelectorAll('.theme-btn')){b.textContent=this.icons[this.pick];b.setAttribute('aria-label',this.labels[this.pick]);}
+    for(const b of document.querySelectorAll('.theme-btn')){b.textContent=this.icons[this.pick];b.setAttribute('aria-label',tr('theme_'+this.pick));}
   },
   next(){this.pick=THEMES[(THEMES.indexOf(this.pick)+1)%THEMES.length];try{localStorage.setItem(THEME_KEY,this.pick);}catch(e){}this.apply();}
 };
+/* homelab: the shell in Greek or English (owner 02/11: EL + EN in every game shell). The menus, buttons and their
+   labels follow the choice; the story (dialogs, island and spell names, banners) stays Greek and is marked lang="el".
+   The key `games.lang` is shared by the hub and every game on the same origin, so one choice carries everywhere.
+   Only 'en' counts; anything else (or no storage) is Greek. The progress key never changes. */
+const LANG_KEY='games.lang';
+const I18N={
+  el:{intro:'Ένας κακός θέλει να πάρει όλη τη μαγεία από τα 4 νησιά. Δύο πνεύματα πετάνε με τον δράκο τους για να τη σώσουν!',
+    chipNap:'🌸 Ναπολέων · νερό, ήλιος, φύση',chipAri:'❄️ Αριάνα · καιρός, χιόνι, πάγος',chipDr:'🐉 Ζαφείρης ο δράκος',
+    ctlMove:'κίνηση',ctlSpells:'ξόρκια',ctlIris:'η Ίριδα βοηθάει (μία φορά σε κάθε νησί)',ctlSwap:'αλλαγή ήρωα',ctlPMF:'παύση · ήχος · πλήρης οθόνη',
+    start:'Ξεκινάμε! ✨',next:'Συνέχεια ▶',continueTo:'Συνέχεια: {name} ▶',homeLink:'🏠 Πίσω στα παιχνίδια',
+    loseH:'Ωχ! Κουραστήκαμε…',loseP:'Ο Ναπολέων και η Αριάνα αποκοιμήθηκαν. Ο Ζαφείρης τους ξυπνάει για να ξαναπροσπαθήσουν στο ίδιο νησί. Τα κλειδιά σας μένουν! 🗝️',retry:'Ξανά από την αρχή 🐉',
+    winH:'Νικήσατε!',winP:'Ο Μαγοφάγος έφυγε για πάντα και η μαγεία γύρισε σε όλα τα νησιά. Όλοι οι φίλοι σας ήρθαν να γιορτάσουν!',again:'Παίξτε ξανά 🎉',
+    pauseH:'Παύση',pauseP:'Πάρτε μια ανάσα. Ο Ζαφείρης περιμένει!',
+    keys:'Κλειδιά',sound:'Ήχος',pause:'Παύση',full:'Πλήρης οθόνη (F)',home:'Πίσω στα παιχνίδια',
+    theme_auto:'Χρώματα: όπως η συσκευή',theme_light:'Χρώματα: φωτεινά',theme_dark:'Χρώματα: σκοτεινά',
+    langBtn:'EN',langLabel:'EN English'},
+  en:{intro:'A villain wants to take all the magic from the 4 islands. Two spirits fly with their dragon to save it!',
+    chipNap:'🌸 Napoleon · water, sun, nature',chipAri:'❄️ Ariana · weather, snow, ice',chipDr:'🐉 Zafeiris the dragon',
+    ctlMove:'move',ctlSpells:'spells',ctlIris:'Iris helps (once on each island)',ctlSwap:'switch hero',ctlPMF:'pause · sound · full screen',
+    start:'Let\'s go! ✨',next:'Continue ▶',continueTo:'Continue: {name} ▶',homeLink:'🏠 Back to the games',
+    loseH:'Oh! We got tired…',loseP:'Napoleon and Ariana fell asleep. Zafeiris wakes them up to try again on the same island. Your keys stay! 🗝️',retry:'Start again 🐉',
+    winH:'You won!',winP:'The Magic-Eater is gone for good and the magic came back to every island. All your friends came to celebrate!',again:'Play again 🎉',
+    pauseH:'Pause',pauseP:'Take a breath. Zafeiris is waiting!',
+    keys:'Keys',sound:'Sound',pause:'Pause',full:'Full screen (F)',home:'Back to the games',
+    theme_auto:'Colours: like the device',theme_light:'Colours: light',theme_dark:'Colours: dark',
+    langBtn:'ΕΛ',langLabel:'ΕΛ Ελληνικά'},
+};
+const Lang={
+  pick:'el',
+  load(){try{this.pick=localStorage.getItem(LANG_KEY)==='en'?'en':'el';}catch(e){this.pick='el';}},
+  apply(){
+    const T=I18N[this.pick];document.documentElement.lang=this.pick;
+    for(const el of document.querySelectorAll('[data-t]'))el.textContent=T[el.dataset.t];
+    for(const el of document.querySelectorAll('[data-ta]'))el.setAttribute('aria-label',T[el.dataset.ta]);
+    for(const b of document.querySelectorAll('.lang-btn')){b.textContent=T.langBtn;b.setAttribute('aria-label',T.langLabel);b.lang=this.pick==='en'?'el':'en';}
+    if(typeof Theme!=='undefined')Theme.apply();
+    if(typeof updateContinue==='function')updateContinue();
+  },
+  next(){this.pick=this.pick==='en'?'el':'en';try{localStorage.setItem(LANG_KEY,this.pick);}catch(e){}this.apply();}
+};
+function tr(k){return (I18N[Lang.pick]||I18N.el)[k];}
+Lang.load();Lang.apply();
 Theme.load();Theme.apply();
 Theme.mqDark.addEventListener('change',()=>Theme.apply());
 function continueGame(){const s=loadSave();if(!s){startGame();return;}initAudio();G.keys=s.island;startIsland(s.island);}
-function updateContinue(){const s=loadSave(),b=$('continue-btn');b.hidden=!s;if(s)b.textContent='Συνέχεια: '+ISL[s.island].name+' ▶';}
+function updateContinue(){const s=loadSave(),b=$('continue-btn');b.hidden=!s;if(s)b.textContent=tr('continueTo').replace('{name}',ISL[s.island].name);}
 
 /* ---------------- STATES / UI ---------------- */
 const hudEl=$('hud'),dlgEl=$('dialog');
@@ -1601,6 +1645,7 @@ $('retry-btn').addEventListener('click',restart);
 $('again-btn').addEventListener('click',toTitle);
 $('resume-btn').addEventListener('click',resumeGame);
 for(const b of document.querySelectorAll('.theme-btn'))b.addEventListener('click',()=>Theme.next());
+for(const b of document.querySelectorAll('.lang-btn'))b.addEventListener('click',()=>Lang.next());
 $('pause-btn').addEventListener('pointerdown',e=>{e.preventDefault();if(G.state==='play')pauseGame();});
 $('snd').addEventListener('pointerdown',e=>{e.preventDefault();initAudio();setMuted(!muted);});
 function toggleFull(){const d=document,el=d.documentElement;try{const p=(d.fullscreenElement||d.webkitFullscreenElement)?(d.exitFullscreen||d.webkitExitFullscreen).call(d):(el.requestFullscreen||el.webkitRequestFullscreen).call(el);if(p&&p.catch)p.catch(()=>{});}catch(e){}}
