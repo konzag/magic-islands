@@ -1,6 +1,12 @@
 # Changelog
 
 ## Unreleased
+- EL + EN shell (owner 02/11, Block 7): `I18N` table (`el` / `en`) and `Lang` in the one script; «EN» / «ΕΛ» button
+  next to 🌓 on the title and pause cards; every `[data-t]` text and `[data-ta]` aria-label, the 🌓 labels and
+  «Συνέχεια: <νησί> ▶» follow the language; `<html lang>` follows it; the story parts (dialog, flight text, banner,
+  hero cards, island name, spell bar) are marked `lang="el"` and stay Greek. Key `games.lang` (shared with the hub;
+  only 'en' counts, try/catch). Progress key and value unchanged. New `tests/lang.spec.ts`; README MI-49; test floor 276 -> 286; K9
+  `el-en-strings` gap closed (allowlist entry removed).
 - NIGHT-2 (2026-11-10): CodeQL (`.github/workflows/codeql.yml`: javascript-typescript, which reads the inline
   script of index.html, and actions; buildless, security-extended, GitHub-hosted, actions pinned by SHA) next to
   Semgrep + Gitleaks; `tests/codeql-workflow.spec.ts` keeps it that way. README row MI-48 for the page head and noindex.
