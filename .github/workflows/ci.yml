@@ -1,14 +1,17 @@
 name: CI
 
-# Static game repo (GAME-STANDARD §2): every PR into staging/main and every push to staging/main runs the
+# Static game repo (GAME-STANDARD §2): every PR into staging and every push to staging/main runs the
 # Playwright smoke of index.html under the games-hub CSP (GAME-STANDARD §7) and a secret scan; Auto-merge waits for
-# these checks. The ruleset (owner decision D21) requires the checks `test` and `gitleaks` on PRs: keep those job
+# these checks. The ruleset (owner decision D21) requires the checks `test` and `gitleaks` on PRs into staging: keep those job
 # ids/names (tests/ci-workflow.spec.ts). Push runs only on staging/main, so a PR branch commit runs CI once.
 # Same conventions as the fleet: superseded runs cancelled, actions pinned by SHA, read-only token, pinned and
 # checksum-verified tools.
 on:
+  # PRs into staging only (owner option (a), 2026-11-16): the release PR staging -> main is opened/moved with
+  # GITHUB_TOKEN, and GitHub holds its pull_request runs in action_required. Its head = the staging head, which
+  # gets this workflow from automerge.sh's dispatch (tests/automerge-script.spec.ts).
   pull_request:
-    branches: [staging, main]
+    branches: [staging]
   push:
     branches: [staging, main]
   workflow_dispatch:
@@ -61,6 +64,26 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 14
+
+  # Plan K9 template check (tools/k9-check.mjs, canonical copy in games-template, copied verbatim): fails when the
+  # game lacks unit tests, Playwright e2e, axe 2.2, a visual baseline, a test floor, EL+EN strings or the README
+  # test guide (GAME-STANDARD §2a). A known gap is report-only only when k9-allowlist.json lists it with a written
+  # reason (a warning in the log); an entry for an item that exists fails (ratchet).
+  k9:
+    name: k9
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - name: K9 check tests (node --test, no dependencies)
+        run: node --test tools/k9-check.test.mjs
+      - name: K9 template check (k9-allowlist.json = the visible, report-only gaps)
+        run: node tools/k9-check.mjs
 
   gitleaks:
     name: gitleaks

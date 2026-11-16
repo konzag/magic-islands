@@ -1,0 +1,9 @@
+{
+  "$comment": "K9 template check (tools/k9-check.mjs). kind: app | game. allow: items this repo still lacks, each with the reason; they are report-only (a CI warning) until added, then the entry must go (an entry for an item that exists fails).",
+  "kind": "game",
+  "allow": {
+    "unit-tests": "The game logic is one inline script in index.html, so there is no module a node unit test can import; every test runs through Playwright (tools/test-count-check.sh ratchets their number).",
+    "axe-2.2": "The axe checks (tests/mi.ts, tests/look.spec.ts) use the tags wcag2a/wcag2aa/wcag21aa only: no wcag22aa yet, so WCAG 2.2 rules (target size 2.5.8 etc.) are not asserted. Own PR (Block 0).",
+    "visual-baseline": "No committed toHaveScreenshot baselines yet: they must be generated on the Linux CI runner (fonts/rendering differ on Windows), so they come with their own PR."
+  }
+}

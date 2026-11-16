@@ -18,7 +18,8 @@ Playwright smoke (§7). New games start from `konzag/games-template`.
 - Keep the `[hidden]{display:none!important;}` rule at the end of the `<style>` (game fix: overlays).
 - Shell stays: 🏠 to `/`, ⏸/P/Esc, 🔊/M, ⛶/F, pause on hidden tab / blur, touch floating joystick (left 45 %) + spell buttons.
 - Progress only in localStorage (`magic-islands.progress.v1`), always in try/catch.
-- All UI text in Greek; docs in English or Greek. README.md (Greek) is also the owner's manual-test guide
+- UI text in Greek; the shell (menus, buttons, labels) also in English through `I18N` / `Lang` (key `games.lang`,
+  owner 02/11), the story stays Greek; docs in English or Greek. README.md (Greek) is also the owner's manual-test guide
   (GAME-STANDARD §2a): keep its nine sections (`tests/readme.spec.ts`) and update screens / checklist MI-xx /
   «Τι άλλαξε» with every visible change.
 - `npx playwright test` must stay green: 10 s keyboard + 10 s touch, 0 console errors, 0 CSP violations under

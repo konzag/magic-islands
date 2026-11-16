@@ -7,11 +7,11 @@ import { fileURLToPath } from 'node:url';
 const file = join(dirname(fileURLToPath(import.meta.url)), '..', '.github', 'workflows', 'codeql.yml');
 
 test.describe('codeql.yml', () => {
-  test('exists, named CodeQL, runs on PRs and pushes to staging/main', () => {
+  test('exists, named CodeQL, runs on PRs into staging (not main) and pushes to staging/main', () => {
     expect(existsSync(file), '.github/workflows/codeql.yml').toBe(true);
     const src = readFileSync(file, 'utf8');
     expect(src).toMatch(/^name: CodeQL$/m);
-    expect(src).toMatch(/^ {2}pull_request:\n {4}branches: \[staging, main\]$/m);
+    expect(src).toMatch(/^ {2}pull_request:\n {4}branches: \[staging\]$/m); // release PR: no approval-gated run
     expect(src).toMatch(/^ {2}push:\n {4}branches: \[staging, main\]$/m);
   });
 

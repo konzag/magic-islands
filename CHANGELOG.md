@@ -1,6 +1,23 @@
 # Changelog
 
 ## Unreleased
+- GAMES-GRAPHICS tier Γ only behind «🎨 Γραφικά: Κανονικά / Πλούσια» (EN «Graphics: Normal / Rich»), owner 02/11:
+  `.gfx-btn` on the title and pause cards, key `magic-islands.gfx.v1` ('rich' | 'normal', default normal). «Πλούσια»
+  = wind gusts in the plants (`propSway`, `RICH_SWAY`) + 28 blown leaves per island (`G.amb` type 'leaf'). Off with
+  prefers-reduced-motion; on a slow device falls back for the visit (`Rich.watch`, same thresholds as the painted
+  look; keeplook keeps it). Progress key and value unchanged. New `tests/rich.spec.ts`; README MI-50.
+- Release PR without a click (owner option (a), 16/11): CI, Security and CodeQL run on `pull_request` into
+  `staging` only. The bot's release PR (staging → main) got approval-gated `pull_request` runs
+  (`action_required`, #58/#61); main's ruleset `main-protect` now needs no checks. After each merge into staging
+  `automerge.sh` dispatches `ci.yml`, `security.yml` and `codeql.yml` on staging (all three tried, a failed
+  dispatch fails the job). New `tests/automerge-script.spec.ts` (fake `gh`), workflow spec tests updated; test floor
+  286 -> 298. The game does not change.
+- EL + EN shell (owner 02/11, Block 7): `I18N` table (`el` / `en`) and `Lang` in the one script; «EN» / «ΕΛ» button
+  next to 🌓 on the title and pause cards; every `[data-t]` text and `[data-ta]` aria-label, the 🌓 labels and
+  «Συνέχεια: <νησί> ▶» follow the language; `<html lang>` follows it; the story parts (dialog, flight text, banner,
+  hero cards, island name, spell bar) are marked `lang="el"` and stay Greek. Key `games.lang` (shared with the hub;
+  only 'en' counts, try/catch). Progress key and value unchanged. New `tests/lang.spec.ts`; README MI-49; test floor 276 -> 286; K9
+  `el-en-strings` gap closed (allowlist entry removed).
 - NIGHT-2 (2026-11-10): CodeQL (`.github/workflows/codeql.yml`: javascript-typescript, which reads the inline
   script of index.html, and actions; buildless, security-extended, GitHub-hosted, actions pinned by SHA) next to
   Semgrep + Gitleaks; `tests/codeql-workflow.spec.ts` keeps it that way. README row MI-48 for the page head and noindex.
