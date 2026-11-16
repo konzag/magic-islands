@@ -15,9 +15,9 @@ test.describe('Security workflow (L1-38)', () => {
     test.skip(info.project.name !== 'desktop', 'file check, desktop project only');
   });
 
-  test('named Security, runs on PRs and pushes to staging/main, read-only token', () => {
+  test('named Security, runs on PRs into staging (not main) and pushes to staging/main, read-only token', () => {
     expect(wf).toMatch(/^name: Security$/m);
-    expect(wf).toMatch(/^ {2}pull_request:\n {4}branches: \[staging, main\]$/m);
+    expect(wf).toMatch(/^ {2}pull_request:\n {4}branches: \[staging\]$/m); // release PR: no approval-gated run
     expect(wf).toMatch(/^ {2}push:\n {4}branches: \[staging, main\]$/m);
     expect(wf).toMatch(/^permissions:\n {2}contents: read\n\n/m);
   });

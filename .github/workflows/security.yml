@@ -5,8 +5,11 @@ name: Security
 # required check (owner decision D21), so it is not duplicated here and no job here reuses that check name.
 # Public repo: GitHub-hosted runner only, never the homelab runner. Read-only token, no SARIF upload.
 on:
+  # PRs into staging only (owner option (a), 2026-11-16): the release PR staging -> main is opened/moved with
+  # GITHUB_TOKEN, and GitHub holds its pull_request runs in action_required. Its head = the staging head, which
+  # gets this workflow from automerge.sh's dispatch (tests/automerge-script.spec.ts).
   pull_request:
-    branches: [staging, main]
+    branches: [staging]
   push:
     branches: [staging, main]
   workflow_dispatch:

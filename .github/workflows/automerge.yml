@@ -11,7 +11,7 @@ on:
 permissions:
   contents: write        # merge PRs
   pull-requests: write   # create the release PR
-  actions: write         # dispatch CI on staging after a merge
+  actions: write         # dispatch CI + Security + CodeQL on staging after a merge
   checks: read
   statuses: read
 

@@ -3,11 +3,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-// Owner decision D21: a ruleset requires the checks `test` and `gitleaks` on every PR into staging and main.
-// Those checks exist on a PR only when CI runs on `pull_request`: with push-only CI a PR whose branch was pushed
-// with GITHUB_TOKEN (Auto-merge, release PR) shows no checks at all. This file check fails when ci.yml loses the
-// pull_request trigger for staging/main, runs push CI on feature branches again (a second run of every PR
-// commit), renames or conditions a required job, or puts a `${{ }}` expression inside a run: script.
+// Owner decision D21: the ruleset `ci-required` requires the checks `test` and `gitleaks` on every PR into staging.
+// Those checks exist on a PR only when CI runs on `pull_request`. Since owner option (a) (2026-11-16) main has no
+// required checks and CI does NOT run on PRs into main: the release PR (staging -> main) is opened and moved with
+// GITHUB_TOKEN, and GitHub holds such pull_request runs in `action_required` until someone clicks «Approve workflows
+// to run». The release PR head is the staging head, which gets CI/Security/CodeQL from automerge.sh's dispatch.
+// This file check fails when ci.yml loses the pull_request trigger for staging, runs it on PRs into main again,
+// runs push CI on feature branches again (a second run of every PR commit), renames or conditions a required job,
+// or puts a `${{ }}` expression inside a run: script.
 // No browser needed: it runs once, in the desktop project.
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = readFileSync(join(root, '.github', 'workflows', 'ci.yml'), 'utf8');
@@ -62,19 +65,19 @@ function parse(i: number, ind: number): [Y, number] {
 
 const doc = parse(0, 0)[0] as { [k: string]: any };
 
-test.describe('CI workflow (ruleset D21: required checks on every PR)', () => {
+test.describe('CI workflow (ruleset D21: required checks on every PR into staging)', () => {
   test.beforeEach(({}, info) => {
     test.skip(info.project.name !== 'desktop', 'file check, desktop project only');
   });
 
-  test('CI runs on every PR into staging/main, push only on staging/main, plus workflow_dispatch', () => {
+  test('CI runs on every PR into staging (never into main), push only on staging/main, plus workflow_dispatch', () => {
     const on = doc.on;
     expect(on, 'ci.yml has no `on:` mapping').toBeTruthy();
     expect(Object.keys(on ?? {}).sort()).toEqual(['pull_request', 'push', 'workflow_dispatch']);
     // No paths/types filter: a PR the filter skips would wait forever for its required checks.
-    expect(on.pull_request, '`pull_request:` needs `branches: [staging, main]`').toBeTruthy();
+    expect(on.pull_request, '`pull_request:` needs `branches: [staging]`').toBeTruthy();
     expect(Object.keys(on.pull_request ?? {})).toEqual(['branches']);
-    expect([...on.pull_request.branches].sort()).toEqual(BRANCHES);
+    expect([...on.pull_request.branches]).toEqual(['staging']);
     // Push limited to staging/main: a bare `push:` would run CI twice for every commit of a PR branch.
     expect(on.push, '`push:` needs `branches: [staging, main]`').toBeTruthy();
     expect(Object.keys(on.push ?? {})).toEqual(['branches']);
