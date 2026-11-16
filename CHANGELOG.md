@@ -1,6 +1,11 @@
 # Changelog
 
 ## Unreleased
+- GAMES-GRAPHICS tier Γ only behind «🎨 Γραφικά: Κανονικά / Πλούσια» (EN «Graphics: Normal / Rich»), owner 02/11:
+  `.gfx-btn` on the title and pause cards, key `magic-islands.gfx.v1` ('rich' | 'normal', default normal). «Πλούσια»
+  = wind gusts in the plants (`propSway`, `RICH_SWAY`) + 28 blown leaves per island (`G.amb` type 'leaf'). Off with
+  prefers-reduced-motion; on a slow device falls back for the visit (`Rich.watch`, same thresholds as the painted
+  look; keeplook keeps it). Progress key and value unchanged. New `tests/rich.spec.ts`; README MI-50.
 - Release PR without a click (owner option (a), 16/11): CI, Security and CodeQL run on `pull_request` into
   `staging` only. The bot's release PR (staging → main) got approval-gated `pull_request` runs
   (`action_required`, #58/#61); main's ruleset `main-protect` now needs no checks. After each merge into staging
