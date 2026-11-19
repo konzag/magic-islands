@@ -14,7 +14,8 @@ Playwright smoke (§7). New games start from `konzag/games-template`.
 ## Rules
 - One self-contained `index.html`: one `<style>`, one inline `<script>` (the hub allows it by sha256). Never add
   `<script src>` from elsewhere, inline event handlers (`onclick="…"`), `eval`, third-party URLs (CDN, Google
-  Fonts), a service worker or network calls. The font comes from the hub: `/static/fonts/comfortaa.css`.
+  Fonts), a service worker of its own or network calls. The font comes from the hub: `/static/fonts/comfortaa.css`.
+  Offline play comes from the hub's one service worker (games-hub ADR-0008), which precaches this repo's files.
 - Keep the `[hidden]{display:none!important;}` rule at the end of the `<style>` (game fix: overlays).
 - Shell stays: 🏠 to `/`, ⏸/P/Esc, 🔊/M, ⛶/F, pause on hidden tab / blur, touch floating joystick (left 45 %) + spell buttons.
 - Progress only in localStorage (`magic-islands.progress.v1`), always in try/catch.
