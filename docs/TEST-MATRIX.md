@@ -76,7 +76,7 @@ metrics are in the games-hub matrix.
 | idempotency | no | | | | No requests and no repeated writes that could double (a save only moves forward, row business rule) |
 | error handling | yes | yes | tests/smoke.spec.ts (0 console errors), tests/save.spec.ts (corrupt save, throwing localStorage), tests/particles.spec.ts (0 errors) | PR CI | |
 | network | infra: homelab-scripts | | | | The game makes no network calls |
-| offline/PWA | no | | | | No service worker (owner rule; GAMES-OFFLINE dropped 29/10; tests/smoke.spec.ts checks there is none) |
+| offline/PWA | yes (in the hub) | yes | tests/offline.spec.ts and tests/smoke.spec.ts (no own service worker or manifest, every loaded file same-origin); games-hub e2e/offline.spec.ts (starts and plays offline through the hub's worker) | PR CI | The hub's one service worker serves the game offline since 2026-11-16 (games-hub ADR-0008, reverses GAMES-OFFLINE 29/10); the game never ships its own |
 | resilience/failover | infra: homelab-scripts | | | | Static page; serving is games-hub's |
 | recovery/disaster recovery | infra: homelab-scripts | | | | |
 | backup/restore | infra: homelab-scripts | | | | No server data (progress is on the device) |
