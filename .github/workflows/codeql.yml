@@ -4,8 +4,11 @@ name: CodeQL
 # javascript-typescript reads the inline <script> of index.html and the Playwright tests; actions reads the workflows.
 # Public repo: GitHub-hosted runner only, never the homelab runner. No build step (buildless extraction).
 on:
+  # PRs into staging only (owner option (a), 2026-11-16): the release PR staging -> main is opened/moved with
+  # GITHUB_TOKEN, and GitHub holds its pull_request runs in action_required. Its head = the staging head, which
+  # gets this workflow from automerge.sh's dispatch (tests/automerge-script.spec.ts).
   pull_request:
-    branches: [staging, main]
+    branches: [staging]
   push:
     branches: [staging, main]
   schedule:
@@ -31,11 +34,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: ${{ matrix.language }}
           build-mode: none
           queries: security-extended
-      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: /language:${{ matrix.language }}
