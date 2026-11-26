@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- fix (a11y): the dialog ▶ `#dlg-next` has its own I18N key `nextName` («Συνέχεια» / «Continue»). Since #62 it took
+  the text key `next` («Συνέχεια ▶»), so its accessible name had the arrow and acceptance MI-24 failed (nightly
+  26/11). Visible text stays ▶. Test: tests/lang.spec.ts «the dialog ▶ is named…» (red on the old index.html).
 - GAMES-GRAPHICS tier Γ only behind «🎨 Γραφικά: Κανονικά / Πλούσια» (EN «Graphics: Normal / Rich»), owner 02/11:
   `.gfx-btn` on the title and pause cards, key `magic-islands.gfx.v1` ('rich' | 'normal', default normal). «Πλούσια»
   = wind gusts in the plants (`propSway`, `RICH_SWAY`) + 28 blown leaves per island (`G.amb` type 'leaf'). Off with
