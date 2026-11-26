@@ -22,6 +22,22 @@ test('the shell is Greek by default and nothing is written', async ({ page }) =>
   expect(problems).toEqual([]);
 });
 
+test('the dialog ▶ is named «Συνέχεια» / «Continue», without the arrow (the visible text stays ▶)', async ({ page }) => {
+  // #62 gave it the text key `next` («Συνέχεια ▶»), so a screen reader read the arrow too and the acceptance row MI-24
+  // (name «Συνέχεια», text ▶) failed. Its own key `nextName` keeps the name of the markup.
+  const problems = await watch(page);
+  await page.goto('/?e2e');
+  await page.locator('#start-btn').click();
+  const next = page.getByRole('button', { name: 'Συνέχεια', exact: true });
+  await expect(next).toHaveText('▶');
+  await expect(next).toHaveAttribute('id', 'dlg-next');
+  await page.evaluate((k) => localStorage.setItem(k, 'en'), LANG_KEY);
+  await page.reload();
+  await page.locator('#start-btn').click();
+  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toHaveText('▶');
+  expect(problems).toEqual([]);
+});
+
 test('«EN» switches the shell to English at once, is remembered, and «ΕΛ» switches back', async ({ page }, info) => {
   const problems = await watch(page);
   const tap = info.project.name === 'tablet';
